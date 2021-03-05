@@ -5,6 +5,8 @@
     //
     // NOTE for JLink users:
     //
+    //    Ensure that Segger Sottware is preinstalled on PC
+    //    Windows: Download latest version from: https://www.segger.com/downloads/jlink/JLink_Windows.exe
     //    Please create the following setting in your VSCode User Settings or in
     //    your global PATH.  Cortex-Debug needs to find the specific gdb-server
     //    you want to use.

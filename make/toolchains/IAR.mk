@@ -55,11 +55,11 @@ endif
 #
 # Build tools
 #
-CC=$(CY_CROSSPATH)/bin/iccarm.exe
+CC=$(CY_CROSSPATH)/bin/iccarm
 CXX=$(CC)
-AS=$(CY_CROSSPATH)/bin/iasmarm.exe
-AR=$(CY_CROSSPATH)/bin/iarchive.exe
-LD=$(CY_CROSSPATH)/bin/ilinkarm.exe
+AS=$(CY_CROSSPATH)/bin/iasmarm
+AR=$(CY_CROSSPATH)/bin/iarchive
+LD=$(CY_CROSSPATH)/bin/ilinkarm
 
 #
 # Elf to bin conversion tool
@@ -222,6 +222,7 @@ CY_TOOLCHAIN_SUFFIX_ARCHIVE=a
 # Toolchain specific flags
 #
 CY_TOOLCHAIN_OUTPUT_OPTION=-o
+CY_TOOLCHAIN_ARCHIVE_LIB_OUTPUT_OPTION=-o
 CY_TOOLCHAIN_MAPFILE=--map=
 CY_TOOLCHAIN_LSFLAGS=--config=
 CY_TOOLCHAIN_INCRSPFILE=-f 

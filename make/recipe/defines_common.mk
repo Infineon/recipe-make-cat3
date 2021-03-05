@@ -2,7 +2,7 @@
 # \file defines_common.mk
 #
 # \brief
-# Common XMC-specific variables and targets for defines.mk
+# Common variables and targets for defines.mk
 #
 ################################################################################
 # \copyright
@@ -26,31 +26,50 @@ ifeq ($(WHICHFILE),true)
 $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
-
-################################################################################
-# General
-################################################################################
-
-#
-# List the supported toolchains
-#
-CY_SUPPORTED_TOOLCHAINS=GCC_ARM
-
-
 ################################################################################
 # BSP Generation
 ################################################################################
 
+# Move old templates files from the old bsp to a file with .bak extension
+CY_BACK_OLD_BSP_TEMPLATES_CMD=\
+	if [ "$(CY_SEARCH_FILES_CMD)" != "" ]; then\
+		if [ -d $(CY_TEMPLATES_DIR) ]; then \
+			echo "Creating backup of old bsp linker scripts and startup files...";\
+			pushd  $(CY_TEMPLATES_DIR) 1> /dev/null;\
+			$(CY_FIND) . -type f \(  $(CY_SEARCH_FILES_CMD) \) -exec bash -c\
+			"if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' ]]; then\
+				echo \"Creating backup file $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak\";\
+				mv $(CY_BSP_DESTINATION_ABSOLUTE)/{} $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak;\
+			fi" \; ;\
+			popd 1> /dev/null;\
+		fi;\
+	fi;
+
 # Command for copying linker scripts and starups (Note: this doesn't get expanded and used until "bsp" target)
+
+# The find commands cannot be condensed into a single find.
+# The find's exec command has a very small character limit, such that if they finds were condensed it would crash.
 CY_BSP_TEMPLATES_CMD=\
 	if [ -d $(CY_BSP_TEMPLATES_DIR) ]; then \
 		echo "Populating $(CY_BSP_LINKER_SCRIPT) linker scripts and $(CY_BSP_STARTUP) startup files...";\
-		rm -rf $(CY_BSP_DESTINATION_DIR);\
 		pushd  $(CY_BSP_TEMPLATES_DIR) 1> /dev/null;\
 		$(CY_FIND) . -type d -exec mkdir -p $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' \; ;\
-		$(CY_FIND) . -type f \( \
-		$(CY_BSP_SEARCH_FILES_CMD) \
-		\) -exec cp -p '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' \; ;\
+		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
+		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
+			if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' && $(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP) == true ]]; then\
+				echo \"Creating backup file $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak\";\
+			fi;\
+		fi" \; ;\
+		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
+		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
+			if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' && $(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP) == true ]]; then\
+				cp -p $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'.bak;\
+			fi;\
+		fi" \; ;\
+		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
+		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
+			cp -p '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}';\
+		fi" \; ;\
 		popd 1> /dev/null;\
 	else \
 		echo "Could not locate template linker scripts and startup files. Skipping update...";\
@@ -60,11 +79,11 @@ CY_BSP_TEMPLATES_CMD=\
 CY_BSP_DEVICES_CMD=\
 	designFile=$$($(CY_FIND) $(CY_TARGET_GEN_DIR) -name *.modus);\
 	if [[ $$designFile ]]; then\
-		echo "Running device-configurator for $(DEVICE_GEN) $(ADDITIONAL_DEVICES_GEN)...";\
+		echo "Running device-configurator for $(DEVICE_GEN)...";\
 		$(CY_CONFIG_MODUS_EXEC)\
 		$(CY_CONFIG_LIBFILE)\
 		--build $$designFile\
-		--set-device=$(subst $(CY_SPACE),$(CY_COMMA),$(DEVICE_GEN) $(ADDITIONAL_DEVICES_GEN));\
+		--set-device=$(subst $(CY_SPACE),$(CY_COMMA),$(DEVICE_GEN));\
 		cfgStatus=$$(echo $$?);\
 		if [ $$cfgStatus != 0 ]; then echo "ERROR: Device-configuration failed for $$designFile"; exit $$cfgStatus; fi;\
 	else\
@@ -75,13 +94,6 @@ CY_BSP_DEVICES_CMD=\
 ################################################################################
 # Paths
 ################################################################################
-
-# Paths used in program/debug
-ifeq ($(CY_DEVICESUPPORT_PATH),)
-CY_OPENOCD_SVD_PATH?=$(dir $(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
-else
-CY_OPENOCD_SVD_PATH?=$(CY_INTERNAL_DEVICESUPPORT_PATH)/CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
-endif
 
 # Set the output file paths
 ifneq ($(CY_BUILD_LOCATION),)
@@ -153,4 +165,24 @@ endif
 # Tools specifics
 ################################################################################
 
-CY_SUPPORTED_TOOL_TYPES=device-configurator
+ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_CAPSENSE)))
+CY_SUPPORTED_TOOL_TYPES+=capsense-configurator capsense-tuner
+endif
+
+CY_BT_ENABLED_DEVICE_COMPONENTS=43012 4343W 43438
+ifneq ($(filter $(CY_BT_ENABLED_DEVICE_COMPONENTS),$(COMPONENTS)),)
+CY_SUPPORTED_TOOL_TYPES+=bt-configurator
+CY_OPEN_bt_configurator_DEVICE=--device 43xxx
+endif
+ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_BLE)))
+CY_SUPPORTED_TOOL_TYPES+=bt-configurator
+CY_OPEN_bt_configurator_DEVICE=--device PSoC6
+endif
+
+ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_FS_USB)))
+CY_SUPPORTED_TOOL_TYPES+=usbdev-configurator
+endif
+
+ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_SECURE)))
+CY_SUPPORTED_TOOL_TYPES+=secure-policy-configurator
+endif

@@ -34,6 +34,11 @@ include $(CY_INTERNAL_BASELIB_PATH)/make/recipe/defines_common.mk
 ################################################################################
 
 #
+# List the supported toolchains
+#
+CY_SUPPORTED_TOOLCHAINS=GCC_ARM
+
+#
 # Core specifics
 #
 ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_M0)))
@@ -254,13 +259,15 @@ ifeq ($(CY_LINKER_SCRIPT_NAME),)
 $(call CY_MACRO_ERROR,Could not resolve device series for linker script)
 endif
 
+# Command for searching files in the template directory
+CY_SEARCH_FILES_CMD=\
+	-name "*$(CY_LINKER_SCRIPT_NAME).*"
 
 ################################################################################
 # BSP generation
 ################################################################################
 
 DEVICE_GEN?=$(DEVICE)
-ADDITIONAL_DEVICES_GEN?=$(ADDITIONAL_DEVICES)
 
 # Core specifics
 ifneq (,$(findstring $(DEVICE_GEN),$(CY_DEVICES_WITH_M0)))
@@ -376,8 +383,9 @@ endif
 endif
 
 # Paths
-CY_BSP_TEMPLATES_DIR=$(call CY_MACRO_DIR,$(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))/CMSIS/Infineon/COMPONENT_$(CY_BSP_SUBSERIES)
-CY_BSP_DESTINATION_DIR=$(CY_TARGET_GEN_DIR)/TOOLCHAIN_*
+CY_INFINEON_TEMPLATE_DIR=$(call CY_MACRO_DIR,$(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))/CMSIS/Infineon
+CY_TEMPLATES_DIR=$(CY_INFINEON_TEMPLATE_DIR)/COMPONENT_$(CY_XMC_SUBSERIES)/Source
+CY_BSP_TEMPLATES_DIR=$(CY_INFINEON_TEMPLATE_DIR)/COMPONENT_$(CY_BSP_SUBSERIES)/Source
 CY_BSP_DESTINATION_ABSOLUTE=$(abspath $(CY_TARGET_GEN_DIR))
 
 ifeq ($(strip $(CY_BSP_LINKER_SCRIPT)),)
@@ -385,8 +393,20 @@ CY_BSP_TEMPLATES_CMD=echo "Could not locate template linker scripts and startup 
 endif
 
 # Command for searching files in the template directory
-CY_BSP_SEARCH_FILES_CMD=\
-	-name "*$(CY_BSP_LINKER_SCRIPT).*"
+CY_BSP_SEARCH_FILES_CMD=-name "*$(CY_BSP_LINKER_SCRIPT).*"
+
+ifneq ($(CY_BSP_LINKER_SCRIPT),$(CY_LINKER_SCRIPT_NAME))
+CY_SEARCH_FILES_CMD=-name "*$(CY_LINKER_SCRIPT_NAME).*"
+else
+CY_SEARCH_FILES_CMD=
+endif
+
+# Paths used in program/debug
+ifeq ($(CY_DEVICESUPPORT_PATH),)
+CY_OPENOCD_SVD_PATH?=$(dir $(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+else
+CY_OPENOCD_SVD_PATH?=$(CY_INTERNAL_DEVICESUPPORT_PATH)/CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+endif
 
 
 ################################################################################
@@ -411,3 +431,9 @@ CY_CMSIS_ARCH_NAME=XMC1000_DFP
 else ifeq ($(CY_XMC_ARCH),XMC4)
 CY_CMSIS_ARCH_NAME=XMC4000_DFP
 endif
+
+################################################################################
+# Tools specifics
+################################################################################
+
+CY_SUPPORTED_TOOL_TYPES=device-configurator

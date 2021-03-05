@@ -12,6 +12,8 @@ The this release of the XMC GNU make build recipe includes support for building 
 This also includes the getlibs.bash script that can be used directly, or via the make target to download additional git repo based libraries for the application.
 
 ### What Changed?
+#### v1.0.0
+* Initial production release
 #### v0.5.0
 * Initial pre-production release
 
@@ -25,10 +27,10 @@ This version of the XMC build system was validated for compatibility with the fo
 
 | Software and Tools                        | Version |
 | :---                                      | :----:  |
-| ModusToolbox Software Environment         | 2.2.1   |
+| ModusToolbox Software Environment         | 2.3.0   |
 | GCC Compiler                              | 9.2     |
 
-Minimum required ModusToolbox Software Environment: v2.2.1
+Minimum required ModusToolbox Software Environment: v2.3.0
 
 ### More information
 Use the following links for more information, as needed:
@@ -37,4 +39,4 @@ Use the following links for more information, as needed:
 * [ModusToolbox](https://www.cypress.com/products/modustoolbox-software-environment)
 
 ---
-© Cypress Semiconductor Corporation, 2019-2020.
+© Cypress Semiconductor Corporation, 2019-2021.

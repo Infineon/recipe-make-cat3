@@ -2,7 +2,7 @@
 # \file recipe_common.mk
 #
 # \brief
-# Common XMC-specific variables and targets for recipe.mk
+# Common variables and targets for recipe.mk
 #
 ################################################################################
 # \copyright
@@ -24,17 +24,6 @@
 
 ifeq ($(WHICHFILE),true)
 $(info Processing $(lastword $(MAKEFILE_LIST)))
-endif
-
-
-################################################################################
-# Temporary Variables
-################################################################################
-CY_MACRO_WARNING_build=This is Early Access Software for XMC devices in ModusToolbox. This software is made available for evaluation purposes only and is not recommended for production development.
-$(eval $(call CY_MACRO_WARNING,CY_MACRO_WARNING_build,$(CY_MACRO_WARNING_build)))
-
-ifeq ($(filter bsp,$(MAKECMDGOALS)),bsp)
-$(error Make bsp for XMC device will be supported in a later version ModusToolbox.)
 endif
 
 
@@ -192,7 +181,6 @@ ifeq ($(LIBNAME),)
 	$(CY_NOISE)$(CY_MEM_CALC)
 	$(CY_NOISE)echo
 endif
-
 
 #
 # Identify the phony targets
