@@ -12,6 +12,9 @@ The this release of the XMC GNU make build recipe includes support for building 
 This also includes the getlibs.bash script that can be used directly, or via the make target to download additional git repo based libraries for the application.
 
 ### What Changed?
+#### v1.1.0
+* Added support for generating tgz file for Infineon online simulator (core-make-1.8.0 or newer)
+* Added support for opening Infineon online simulator through quick panel (core-make-1.8.0 or newer)
 #### v1.0.0
 * Initial production release
 #### v0.5.0
