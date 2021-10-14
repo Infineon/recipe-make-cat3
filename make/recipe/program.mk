@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2020 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,12 +28,12 @@ $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
 program:
-	$(call CY_MACRO_ERROR,CLI program is not supported for current device. Use IDE for program purpose)
+	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for program purpose)
 qprogram:
-	$(call CY_MACRO_ERROR,CLI program is not supported for current device. Use IDE for program purpose)
+	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for program purpose)
 debug:
-	$(call CY_MACRO_ERROR,CLI program is not supported for current device. Use IDE for debug)
+	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)
 qdebug:
-	$(call CY_MACRO_ERROR,CLI program is not supported for current device. Use IDE for debug)
+	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)
 attach:
-	$(call CY_MACRO_ERROR,CLI program is not supported for current device. Use IDE for debug)
+	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)

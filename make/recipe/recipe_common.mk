@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2020 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,8 @@ CY_RECIPE_DEFINES=\
 	-DCY_TARGET_BOARD=$(subst -,_,$(TARGET))\
 	$(foreach feature,$(CY_COMPONENT_LIST),-DCOMPONENT_$(subst -,_,$(feature)))\
 	$(CY_TOOLCHAIN_DEBUG_FLAG)\
-	$(CY_TOOLCHAIN_DEFINES)
+	$(CY_TOOLCHAIN_DEFINES)\
+	-DCY_SUPPORTS_DEVICE_VALIDATION
 
 #
 # Includes construction
@@ -150,6 +151,22 @@ endif
 endif
 
 endif
+
+#
+# Paths construction helper macroses
+#
+
+#
+# Get unquoted path with escaped spaces
+# $(1) : path for which quotes and escapes should be removed but spaces should be escaped
+#
+CY_MACRO_GET_PATH_W_ESCAPED_SPACES=$(subst ",,$(subst $(CY_SPACE),\$(CY_SPACE),$(subst \,,$(1))))
+
+#
+# Get unquoted path without escaped symbols
+# $(1) : path for which quotes and escapes should be removed
+#
+CY_MACRO_GET_RAW_PATH=$(subst ",,$(subst \,,$(1)))
 
 
 ################################################################################

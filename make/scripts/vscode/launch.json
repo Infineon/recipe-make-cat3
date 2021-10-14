@@ -43,6 +43,7 @@
             "demangle": true,
             // svdFile is optional, it can be very large.
             "svdFile": "&&CY_SVD_FILE_NAME&&",
+            "breakAfterReset": true,
             "runToMain": true,          // if true, program will halt at main. Not used for a restart
             "preLaunchTask": "Build: Build [&&CY_CONFIG&&]", // Set this to run a task from tasks.json before
                                                      // starting a debug session
@@ -63,6 +64,7 @@
             "demangle": true,
             // svdFile is optional, it can be very large.
             "svdFile": "&&CY_SVD_FILE_NAME&&",
+            "breakAfterReset": true,
             "showDevDebugOutput": false // When set to true, displays output of GDB.
                                         // This is helpful when something is not working right
         },

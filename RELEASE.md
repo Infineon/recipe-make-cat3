@@ -1,5 +1,5 @@
 # XMC GNU make Build System Release Notes
-This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through the ModusToolbox Integrated Development Environment (IDE).
+This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through the Eclipse IDE for ModusToolbox.
 
 ### What's Included?
 The this release of the XMC GNU make build recipe includes support for building XMC application projects. It is expected that a code example contains a top level make file for itself and references a Board Support Package (BSP) that defines specifics items, like the XMC part, for the target board. Supported functionality includes the following:
@@ -12,6 +12,8 @@ The this release of the XMC GNU make build recipe includes support for building 
 This also includes the getlibs.bash script that can be used directly, or via the make target to download additional git repo based libraries for the application.
 
 ### What Changed?
+#### v1.2.0
+* Added ARM and IAR support (IAR linker scripts are shipped with IAR EW)
 #### v1.1.0
 * Added support for generating tgz file for Infineon online simulator (core-make-1.8.0 or newer)
 * Added support for opening Infineon online simulator through quick panel (core-make-1.8.0 or newer)

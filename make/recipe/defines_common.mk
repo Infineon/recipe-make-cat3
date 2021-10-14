@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2020 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,65 +31,23 @@ endif
 ################################################################################
 
 # Move old templates files from the old bsp to a file with .bak extension
-CY_BACK_OLD_BSP_TEMPLATES_CMD=\
-	if [ "$(CY_SEARCH_FILES_CMD)" != "" ]; then\
-		if [ -d $(CY_TEMPLATES_DIR) ]; then \
-			echo "Creating backup of old bsp linker scripts and startup files...";\
-			pushd  $(CY_TEMPLATES_DIR) 1> /dev/null;\
-			$(CY_FIND) . -type f \(  $(CY_SEARCH_FILES_CMD) \) -exec bash -c\
-			"if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' ]]; then\
-				echo \"Creating backup file $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak\";\
-				mv $(CY_BSP_DESTINATION_ABSOLUTE)/{} $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak;\
-			fi" \; ;\
-			popd 1> /dev/null;\
-		fi;\
-	fi;
+CY_BACK_OLD_BSP_TEMPLATES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/backup_bsp_template.bash "$(CY_FIND)" "$(CY_TEMPLATES_DIR)" "$(CY_BSP_DESTINATION_ABSOLUTE)" "$(CY_SEARCH_FILES_CMD)";
 
 # Command for copying linker scripts and starups (Note: this doesn't get expanded and used until "bsp" target)
 
 # The find commands cannot be condensed into a single find.
 # The find's exec command has a very small character limit, such that if they finds were condensed it would crash.
-CY_BSP_TEMPLATES_CMD=\
-	if [ -d $(CY_BSP_TEMPLATES_DIR) ]; then \
-		echo "Populating $(CY_BSP_LINKER_SCRIPT) linker scripts and $(CY_BSP_STARTUP) startup files...";\
-		pushd  $(CY_BSP_TEMPLATES_DIR) 1> /dev/null;\
-		$(CY_FIND) . -type d -exec mkdir -p $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' \; ;\
-		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
-		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
-			if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' && $(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP) == true ]]; then\
-				echo \"Creating backup file $(CY_BSP_DESTINATION_ABSOLUTE)/{}.bak\";\
-			fi;\
-		fi" \; ;\
-		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
-		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
-			if [[ -f $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' && $(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP) == true ]]; then\
-				cp -p $(CY_BSP_DESTINATION_ABSOLUTE)/'{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'.bak;\
-			fi;\
-		fi" \; ;\
-		$(CY_FIND) . -type f \(  $(CY_BSP_SEARCH_FILES_CMD) \) -exec bash -c\
-		"if ! cmp -s '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}'; then\
-			cp -p '{}' $(CY_BSP_DESTINATION_ABSOLUTE)/'{}';\
-		fi" \; ;\
-		popd 1> /dev/null;\
-	else \
-		echo "Could not locate template linker scripts and startup files. Skipping update...";\
-	fi;
+CY_BSP_TEMPLATES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/copy_bsp_template.bash "$(CY_FIND)" "$(CY_BSP_TEMPLATES_DIR)" "$(CY_BSP_DESTINATION_ABSOLUTE)" "$(CY_BSP_SEARCH_FILES_CMD)" "$(CY_BSP_LINKER_SCRIPT)" "$(CY_BSP_STARTUP)" "$(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP)";
 
 # Command for updating the device(s) (Note: this doesn't get expanded and used until "bsp" target)
-CY_BSP_DEVICES_CMD=\
-	designFile=$$($(CY_FIND) $(CY_TARGET_GEN_DIR) -name *.modus);\
-	if [[ $$designFile ]]; then\
-		echo "Running device-configurator for $(DEVICE_GEN)...";\
-		$(CY_CONFIG_MODUS_EXEC)\
-		$(CY_CONFIG_LIBFILE)\
-		--build $$designFile\
-		--set-device=$(subst $(CY_SPACE),$(CY_COMMA),$(DEVICE_GEN) $(ADDITIONAL_DEVICES));\
-		cfgStatus=$$(echo $$?);\
-		if [ $$cfgStatus != 0 ]; then echo "ERROR: Device-configuration failed for $$designFile"; exit $$cfgStatus; fi;\
-	else\
-		echo "Could not detect .modus file. Skipping update...";\
-	fi;
+CY_BSP_DEVICES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/run_bsp_device_configurator.bash "$(CY_FIND)" "$(CY_TARGET_GEN_DIR)" "$(DEVICE_GEN)" "$(ADDITIONAL_DEVICES)" "$(CY_CONFIG_MODUS_EXEC)" "$(CY_CONFIG_LIBFILE)";
 
+ifneq ($(CY_QSPI_FLM_DIR),)
+CY_BSP_UPDATE_FLASH_LOADER_CMD=$(if $(wildcard $(CY_OPEN_qspi_configurator_OUTPUT_DIR)/*.$(CY_OPEN_qspi_configurator_EXT)),\
+	$(CY_INTERNAL_TOOLS)/$(CY_TOOL_qspi-configurator-cli_EXE) --config $(wildcard $(CY_OPEN_qspi_configurator_OUTPUT_DIR)/*.$(CY_OPEN_qspi_configurator_EXT)) --flashloader-dir $(CY_QSPI_FLM_DIR),);
+else
+CY_BSP_UPDATE_FLASH_LOADER_CMD=
+endif
 
 ################################################################################
 # Paths
@@ -104,6 +62,13 @@ CY_SYM_FILE?=\$$\{cy_prj_path\}/$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(C
 CY_PROG_FILE?=\$$\{cy_prj_path\}/$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
 endif
 
+# Search for device support path only when CY_DEVICESUPPORT_PATH is not defined otherwise use CY_INTERNAL_DEVICESUPPORT_PATH
+ifeq ($(CY_DEVICESUPPORT_PATH),)
+CY_CONDITIONAL_DEVICESUPPORT_PATH:=$(call CY_MACRO_DIR,$(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))
+else
+CY_CONDITIONAL_DEVICESUPPORT_PATH:=$(firstword $(CY_INTERNAL_DEVICESUPPORT_PATH))
+endif
+
 
 ################################################################################
 # IDE specifics
@@ -115,7 +80,7 @@ CY_ECLIPSE_ARGS+="s|&&CY_OPENOCD_CFG&&|$(CY_OPENOCD_DEVICE_CFG)|g;"\
 				"s|&&CY_OPENOCD_CHIP&&|$(CY_OPENOCD_CHIP_NAME)|g;"\
 				"s|&&CY_APPNAME&&|$(CY_IDE_PRJNAME)|;"\
 				"s|&&CY_CONFIG&&|$(CONFIG)|;"\
-				"s|&&CY_SVD_PATH&&|$(CY_OPENOCD_SVD_PATH)|g;"\
+				"s|&&CY_SVD_PATH&&|$(CY_ECLIPSE_OPENOCD_SVD_PATH)|g;"\
 				"s|&&CY_SYM_FILE&&|$(CY_SYM_FILE)|;"\
 				"s|&&CY_PROG_FILE&&|$(CY_PROG_FILE)|;"\
 				"s|&&CY_ECLIPSE_GDB&&|$(CY_ECLIPSE_GDB)|g;"
@@ -138,10 +103,14 @@ endif
 
 CY_C_FLAGS=$(subst $(CY_SPACE),\"$(CY_COMMA)$(CY_NEWLINE_MARKER)\",$(strip $(CY_RECIPE_CFLAGS)))
 
+ifeq ($(CY_ATTACH_SERVER_TYPE),)
+CY_ATTACH_SERVER_TYPE=openocd
+endif
+
 CY_VSCODE_ARGS+="s|&&CY_ELF_FILE&&|$(CY_ELF_FILE)|g;"\
 				"s|&&CY_HEX_FILE&&|$(CY_HEX_FILE)|g;"\
 				"s|&&CY_OPEN_OCD_FILE&&|$(CY_OPENOCD_DEVICE_CFG)|g;"\
-				"s|&&CY_SVD_FILE_NAME&&|$(CY_OPENOCD_SVD_PATH)|g;"\
+				"s|&&CY_SVD_FILE_NAME&&|$(CY_VSCODE_OPENOCD_SVD_PATH)|g;"\
 				"s|&&CY_MTB_PATH&&|$(CY_TOOLS_DIR)|g;"\
 				"s|&&CY_TOOL_CHAIN_DIRECTORY&&|$(subst ",,$(CY_CROSSPATH))|g;"\
 				"s|&&CY_C_FLAGS&&|$(CY_C_FLAGS)|g;"\
@@ -151,7 +120,8 @@ CY_VSCODE_ARGS+="s|&&CY_ELF_FILE&&|$(CY_ELF_FILE)|g;"\
 				"s|&&CY_CDB_FILE&&|$(CY_CDB_FILE)|g;"\
 				"s|&&CY_CONFIG&&|$(CONFIG)|g;"\
 				"s|&&CY_DEVICE_ATTACH&&|$(CY_JLINK_DEVICE_CFG_ATTACH)|g;"\
-				"s|&&CY_MODUS_SHELL_BASE&&|$(CY_TOOL_modus-shell_BASE)|g;"
+				"s|&&CY_MODUS_SHELL_BASE&&|$(CY_TOOL_modus-shell_BASE)|g;"\
+				"s|&&CY_ATTACH_SERVER_TYPE&&|$(CY_ATTACH_SERVER_TYPE)|g;"
 
 ifeq ($(CY_USE_CUSTOM_GCC),true)
 CY_VSCODE_ARGS+="s|&&CY_GCC_BIN_DIR&&|$(CY_INTERNAL_TOOL_gcc_BASE)/bin|g;"\
@@ -174,10 +144,6 @@ CY_BT_ENABLED_DEVICE_COMPONENTS=43012 4343W 43438
 ifneq ($(filter $(CY_BT_ENABLED_DEVICE_COMPONENTS),$(COMPONENTS)),)
 CY_SUPPORTED_TOOL_TYPES+=bt-configurator
 CY_OPEN_bt_configurator_DEVICE=--device 43xxx
-endif
-ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_BLE)))
-CY_SUPPORTED_TOOL_TYPES+=bt-configurator
-CY_OPEN_bt_configurator_DEVICE=--device PSoC6
 endif
 
 ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_FS_USB)))

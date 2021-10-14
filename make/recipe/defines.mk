@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2020 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@ include $(CY_INTERNAL_BASELIB_PATH)/make/recipe/defines_common.mk
 #
 # List the supported toolchains
 #
-CY_SUPPORTED_TOOLCHAINS=GCC_ARM
+CY_SUPPORTED_TOOLCHAINS=GCC_ARM IAR
 
 #
 # Core specifics
@@ -84,28 +84,31 @@ CY_XMC_SUBSERIES_CALC=$(strip \
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC1400)),\
 	XMC1400,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4100)),\
-	$(if $(findstring XMC4104,$(1)),\
+	XMC4100,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4104)),\
 	XMC4104,\
-	$(if $(findstring XMC4108,$(1)),\
-	XMC4108,XMC4100)),\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4108)),\
+	XMC4108,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4200)),\
 	XMC4200,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4300)),\
 	XMC4300,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4400)),\
-	$(if $(findstring XMC4402,$(1)),\
-	XMC4402,XMC4400),\
-	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4500)),\
-	$(if $(findstring XMC4502,$(1)),\
+	XMC4400,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4402)),\
 	XMC4402,\
-	$(if $(findstring XMC4504,$(1)),\
-	XMC4504,XMC4500)),\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4500)),\
+	XMC4500,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4502)),\
+	XMC4502,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4504)),\
+	XMC4504,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4700)),\
 	XMC4700,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4800)),\
 	XMC4800,\
 	$(call CY_MACRO_ERROR,Incorrect part number $(1). Check DEVICE_GEN variable.)\
-	))))))))))))
+	)))))))))))))))))
 
 CY_XMC_SUBSERIES=$(call CY_XMC_SUBSERIES_CALC,$(DEVICE))
 
@@ -128,7 +131,7 @@ else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC1400)))
 CY_OPENOCD_CHIP_NAME=xmc1400
 CY_XMC_SERIES=XMC1400
 
-else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4100)))
+else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4100) $(CY_DEVICES_WITH_DIE_XMC4104) $(CY_DEVICES_WITH_DIE_XMC4108)))
 CY_START_SRAM=0x1FFFE000
 CY_OPENOCD_CHIP_NAME=xmc4100
 CY_XMC_SERIES=XMC4100
@@ -143,12 +146,12 @@ CY_START_SRAM=0x1FFF0000
 CY_OPENOCD_CHIP_NAME=xmc4300
 CY_XMC_SERIES=XMC4300
 
-else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4400)))
+else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4400) $(CY_DEVICES_WITH_DIE_XMC4402)))
 CY_START_SRAM=0x1FFFC000
 CY_OPENOCD_CHIP_NAME=xmc4400
 CY_XMC_SERIES=XMC4400
 
-else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4500)))
+else ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC4500) $(CY_DEVICES_WITH_DIE_XMC4502) $(CY_DEVICES_WITH_DIE_XMC4504)))
 CY_START_SRAM=0x20000000
 CY_OPENOCD_CHIP_NAME=xmc4500
 CY_XMC_SERIES=XMC4500
@@ -234,7 +237,15 @@ endif
 #
 # linker scripts
 #
-CY_MACRO_XMC1_LINKER_CALC_INTERNAL=$(strip \
+
+# The IAR linker scripts shipped as part of the IAR install rather than BSP.
+# These linker have "xxxxx" rather than just a single "x" in their name.
+# These linker script also don't have '0' after the 'x'.
+# In GCC the linker script name may a '0' after the 'x' if its a XMC1 device
+# I.E XMC1404xxxxx200.icf instead XMC1404x0200.ld
+
+
+CY_MACRO_GCC_XMC1_LINKER_CALC_INTERNAL=$(strip \
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_8)),\
 	$(2)x0008,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_16)),\
@@ -249,7 +260,7 @@ CY_MACRO_XMC1_LINKER_CALC_INTERNAL=$(strip \
 	$(2)x0200,\
 	)))))))
 
-CY_MACRO_XMC4_LINKER_CALC_INTERNAL=$(strip \
+CY_MACRO_GCC_XMC4_LINKER_CALC_INTERNAL=$(strip \
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_64)),\
 	$(2)x64,\
 	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_128)),\
@@ -268,20 +279,52 @@ CY_MACRO_XMC4_LINKER_CALC_INTERNAL=$(strip \
 	$(2)x2048,\
 	)))))))))
 
-# ARCH, DEVICE, SUBSERIES
+# first part of the linker script (XMC4104xxxx)
+# remove the part name after the dash and add x.
+# the 4100 and 4200 has 4x while everything else has 5x
+CY_MACRO_IAR_LINKER_PREFIX_CALC_INTERNAL=$(strip $(word 1,$(subst -, ,$(1)))$(strip \
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_DIE_XMC4100) $(CY_DEVICES_WITH_DIE_XMC4104) $(CY_DEVICES_WITH_DIE_XMC4108) $(CY_DEVICES_WITH_DIE_XMC4200)),xxxx,xxxxx)))
+
+CY_MACRO_IAR_LINKER_MEM_CALC_INTERNAL=$(strip \
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_8)),\
+	8,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_16)),\
+	16,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_32)),\
+	32,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_64)),\
+	64,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_128)),\
+	128,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_200)),\
+	200,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_256)),\
+	256,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_512)),\
+	512,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_768)),\
+	768,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_1024)),\
+	1024,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_1536)),\
+	1536,\
+	$(if $(findstring $(1),$(CY_DEVICES_WITH_FLASH_KB_2048)),\
+	2048,\
+	)))))))))))))
+
+# ARCH, DEVICE, SUBSERIES, TOOLCHAIN
 CY_MACRO_LINKER_CALC=$(strip \
+	$(if $(findstring IAR,$(4)),\
+	$(call CY_MACRO_IAR_LINKER_PREFIX_CALC_INTERNAL,$(2))$(call CY_MACRO_IAR_LINKER_MEM_CALC_INTERNAL,$(2)),\
 	$(if $(findstring $(1),XMC1),\
-	$(call CY_MACRO_XMC1_LINKER_CALC_INTERNAL,$(2),$(3)),\
+	$(call CY_MACRO_GCC_XMC1_LINKER_CALC_INTERNAL,$(2),$(3)),\
 	$(if $(findstring $(1),XMC4),\
-	$(call CY_MACRO_XMC4_LINKER_CALC_INTERNAL,$(2),$(3)),\
+	$(call CY_MACRO_GCC_XMC4_LINKER_CALC_INTERNAL,$(2),$(3)),\
 	$(call CY_MACRO_ERROR,Could not resolve device series for linker script.)\
-	)))
+	))))
 
-CY_LINKER_SCRIPT_NAME=$(call CY_MACRO_LINKER_CALC,$(CY_XMC_ARCH),$(DEVICE),$(CY_XMC_SUBSERIES))
+CY_LINKER_SCRIPT_NAME=$(call CY_MACRO_LINKER_CALC,$(CY_XMC_ARCH),$(DEVICE),$(CY_XMC_SUBSERIES),$(TOOLCHAIN))
 
-# Command for searching files in the template directory
-CY_SEARCH_FILES_CMD=\
-	-name "*$(CY_LINKER_SCRIPT_NAME).*"
 
 ################################################################################
 # BSP generation
@@ -296,10 +339,14 @@ CY_BSP_ARCH=$(call CY_XMC_ARCH_CAL,$(DEVICE_GEN))
 CY_BSP_SUBSERIES=$(call CY_XMC_SUBSERIES_CALC,$(DEVICE_GEN))
 
 # Linker script
-CY_BSP_LINKER_SCRIPT=$(call CY_MACRO_LINKER_CALC,$(CY_BSP_ARCH),$(DEVICE_GEN),$(CY_BSP_SUBSERIES))
+# It's OK to hardcode GCC_ARM here.
+# This variable is used to copy the linker script into new custom BSP.
+# GCC, and GCC_ARM use the same linker script naming convention.
+# For IAR, there are no linker script to copy since they are shipper with IAR workbench.
+CY_BSP_LINKER_SCRIPT=$(call CY_MACRO_LINKER_CALC,$(CY_BSP_ARCH),$(DEVICE_GEN),$(CY_BSP_SUBSERIES),GCC_ARM)
 
 # Paths
-CY_INFINEON_TEMPLATE_DIR=$(call CY_MACRO_DIR,$(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))/CMSIS/Infineon
+CY_INFINEON_TEMPLATE_DIR=$(CY_CONDITIONAL_DEVICESUPPORT_PATH)/CMSIS/Infineon
 CY_TEMPLATES_DIR=$(CY_INFINEON_TEMPLATE_DIR)/COMPONENT_$(CY_XMC_SUBSERIES)/Source
 CY_BSP_TEMPLATES_DIR=$(CY_INFINEON_TEMPLATE_DIR)/COMPONENT_$(CY_BSP_SUBSERIES)/Source
 CY_BSP_DESTINATION_ABSOLUTE=$(abspath $(CY_TARGET_GEN_DIR))
@@ -309,19 +356,21 @@ CY_BSP_TEMPLATES_CMD=echo "Could not locate template linker scripts and startup 
 endif
 
 # Command for searching files in the template directory
-CY_BSP_SEARCH_FILES_CMD=-name "*$(CY_BSP_LINKER_SCRIPT).*"
+CY_BSP_SEARCH_FILES_CMD=-name "*$(CY_BSP_LINKER_SCRIPT)*.*"
 
 ifneq ($(CY_BSP_LINKER_SCRIPT),$(CY_LINKER_SCRIPT_NAME))
-CY_SEARCH_FILES_CMD=-name "*$(CY_LINKER_SCRIPT_NAME).*"
+CY_SEARCH_FILES_CMD=-name "*$(CY_LINKER_SCRIPT_NAME)*.*"
 else
 CY_SEARCH_FILES_CMD=
 endif
 
 # Paths used in program/debug
 ifeq ($(CY_DEVICESUPPORT_PATH),)
-CY_OPENOCD_SVD_PATH?=$(dir $(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+CY_ECLIPSE_OPENOCD_SVD_PATH?=$$\{cy_prj_path\}/$(dir $(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+CY_VSCODE_OPENOCD_SVD_PATH?=$(dir $(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
 else
-CY_OPENOCD_SVD_PATH?=$(CY_INTERNAL_DEVICESUPPORT_PATH)/CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+CY_ECLIPSE_OPENOCD_SVD_PATH?=$$\{cy_prj_path\}/$(CY_DEVICESUPPORT_PATH)/CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
+CY_VSCODE_OPENOCD_SVD_PATH?=$(CY_DEVICESUPPORT_PATH)/CMSIS/Infineon/SVD/$(CY_XMC_SERIES).svd
 endif
 
 
@@ -347,18 +396,24 @@ CY_CMSIS_ARCH_NAME=XMC1000_DFP
 else ifeq ($(CY_XMC_ARCH),XMC4)
 CY_CMSIS_ARCH_NAME=XMC4000_DFP
 endif
+CY_CMSIS_VENDOR_NAME?=Infineon
+CY_CMSIS_VENDOR_ID?=7
+# pName is optional in the DFP and cprj. But they must match.
+# pName is not specified in the XMC dfp, so we have to also not specify in the generated cprj file.
+# If we specified the pName, the generated cprj file will not work.
+CY_CMSIS_SPECIFY_CORE=0
 
 ################################################################################
 # Tools specifics
 ################################################################################
 
-CY_SUPPORTED_TOOL_TYPES=device-configurator
+CY_SUPPORTED_TOOL_TYPES+=device-configurator
 
 ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_DIE_XMC1100) $(CY_DEVICES_WITH_DIE_XMC1200) $(CY_DEVICES_WITH_DIE_XMC1300) $(CY_DEVICES_WITH_DIE_XMC1400)))
 CY_SUPPORTED_TOOL_TYPES+=online-simulator
 CY_OPEN_TYPE_LIST+=online-simulator
 
-CY_OPEN_online_simulator_FILE_RAW="https://design.infineon.com/tinaui/designer.php?path=EXAMPLESROOT%7CINFINEON%7CApplications%7CIndustrial%7C&file=mcu_XMC1400_Boot_Kit_MTB_v2.tsc"
+CY_OPEN_online_simulator_FILE_RAW="https://design.infineon.com/tinaui/designer.php?path=EXAMPLESROOT%7CINFINEON%7CApplications%7CIndustrial%7C&file=mcu_$(CY_XMC_SERIES)_Boot_Kit_MTB_v2.tsc"
 
 ifeq ($(OS),Windows_NT)
 # escape the & with ^&

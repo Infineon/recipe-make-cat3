@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through the ModusToolbox Integrated Development Environment (IDE).
+This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through the Eclipse IDE for ModusToolbox.
 
 ## Prerequisite
 

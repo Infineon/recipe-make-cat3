@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2020 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,19 +47,20 @@ CY_MACRO_ELF2BIN=$(CY_TOOLCHAIN_ELF2BIN) -O binary $1 $2
 # The base path to the IAR cross compilation executables
 #
 ifeq ($(CY_COMPILER_PATH),)
-CY_CROSSPATH=$(CY_COMPILER_IAR_DIR)
+# Remove quotes and escapes from the path
+CY_CROSSPATH=$(call CY_MACRO_GET_RAW_PATH,$(CY_COMPILER_IAR_DIR))
 else
-CY_CROSSPATH=$(CY_COMPILER_PATH)
+CY_CROSSPATH=$(call CY_MACRO_GET_RAW_PATH,$(CY_COMPILER_PATH))
 endif
 
 #
 # Build tools
 #
-CC=$(CY_CROSSPATH)/bin/iccarm
+CC="$(CY_CROSSPATH)/bin/iccarm"
 CXX=$(CC)
-AS=$(CY_CROSSPATH)/bin/iasmarm
-AR=$(CY_CROSSPATH)/bin/iarchive
-LD=$(CY_CROSSPATH)/bin/ilinkarm
+AS="$(CY_CROSSPATH)/bin/iasmarm"
+AR="$(CY_CROSSPATH)/bin/iarchive"
+LD="$(CY_CROSSPATH)/bin/ilinkarm"
 
 #
 # Elf to bin conversion tool
