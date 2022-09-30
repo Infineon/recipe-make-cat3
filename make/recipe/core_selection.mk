@@ -1,9 +1,8 @@
 ################################################################################
-# \file recipe.mk
+# \file core_selection.mk
 #
 # \brief
-# Set up a set of defines, includes, software components, linker script, 
-# Pre and Post build steps and call a macro to create a specific ELF file.
+# Determine which MCU core is being targeted.
 #
 ################################################################################
 # \copyright
@@ -23,20 +22,22 @@
 # limitations under the License.
 ################################################################################
 
-ifeq ($(WHICHFILE),true)
-$(info Processing $(lastword $(MAKEFILE_LIST)))
+# 
+# CORE
+#   - The type of ARM core used by the application.
+#   - May be set by user in Makefile or by a BSP.
+#   - If not set, assume CM0P.
+#   - Valid COREs are determined by the selected toolchain. 
+#     Currently this includes: CM0, CM0P, CM4, and.
+#
+#
+# Core specifics
+#
+ifneq (1,$(words $(DEVICE_$(DEVICE)_CORES)))
+$(call mtb__error,Incorrect cores: "$(DEVICE_$(DEVICE)_CORES)". Check DEVICE_$(DEVICE)_CORES variable.)
 endif
 
-include $(MTB_TOOLS__RECIPE_DIR)/make/recipe/recipe_common.mk
+MTB_RECIPE__CORE_NAME:=$(patsubst CORE_NAME_%,%,$(DEVICE_$(DEVICE)_CORES))
+MTB_RECIPE__CORE:=$(patsubst %_0,%,$(MTB_RECIPE__CORE_NAME))
 
-# Aclang arguments must match the symbols in the PDL makefile
-_MTB_RECIPE__ACLANG_POSTBUILD=\
-	$(MTB_TOOLS__RECIPE_DIR)/make/scripts/m2bin \
-	--verbose --vect $(VECT_BASE_CM0P) --text $(TEXT_BASE_CM0P) --data $(RAM_BASE_CM0P) --size $(TEXT_SIZE_CM0P)\
-	$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).mach_o\
-	$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).bin
-
-progtool:
-	$(call mtb__error,make progtool is not supported for the current device.)
-
-.PHONY: progtool
+COMPONENTS+=$(MTB_RECIPE__CORE) $(MTB_RECIPE__CORE_NAME)

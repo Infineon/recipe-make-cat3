@@ -26,224 +26,201 @@ ifeq ($(WHICHFILE),true)
 $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
+################################################################################
+# Tools
+################################################################################
+
+ifeq ($(OS),Windows_NT)
+# By default IAR 9.1, 9.2, and 9.3 all install to the 9.1 subdirectory
+_MTB_TOOLCHAIN_IAR__DEFAULT:=C:/Program\ Files/IAR\ Systems/Embedded\ Workbench\ 9.1/arm
+else
+# Use 8.42.1 IAR version because it has support for Ubuntu
+_MTB_TOOLCHAIN_IAR__DEFAULT:=$(HOME)/IAR-BuildLx-Arm-8.42.1
+endif
+
+# The base path to the IAR cross compilation executables
+ifneq ($(CY_COMPILER_IAR_DIR),)
+MTB_TOOLCHAIN_IAR__BASE_DIR:=$(call mtb_core__escaped_path,$(CY_COMPILER_IAR_DIR))
+_MTB_TOOLCHAIN_IAR__UNESCAPED_BASE_DIR=$(CY_COMPILER_IAR_DIR)
+else
+ifneq ($(CY_COMPILER_PATH),)
+MTB_TOOLCHAIN_IAR__BASE_DIR:=$(call mtb_core__escaped_path,$(CY_COMPILER_PATH))
+_MTB_TOOLCHAIN_IAR__UNESCAPED_BASE_DIR=$(CY_COMPILER_PATH)
+else
+MTB_TOOLCHAIN_IAR__BASE_DIR:=$(_MTB_TOOLCHAIN_IAR__DEFAULT)
+_MTB_TOOLCHAIN_IAR__UNESCAPED_BASE_DIR=$(_MTB_TOOLCHAIN_IAR__DEFAULT)
+endif
+endif
+
+# The base path to the Clang cross compilation executables
+ifeq ($(TOOLCHAIN),IAR)
+CY_CROSSPATH:=$(MTB_TOOLCHAIN_IAR__BASE_DIR)
+endif
+
+# Build tools
+MTB_TOOLCHAIN_IAR__CC :=$(MTB_TOOLCHAIN_IAR__BASE_DIR)/bin/iccarm
+MTB_TOOLCHAIN_IAR__CXX:=$(MTB_TOOLCHAIN_IAR__CC)
+MTB_TOOLCHAIN_IAR__AS :=$(MTB_TOOLCHAIN_IAR__BASE_DIR)/bin/iasmarm
+MTB_TOOLCHAIN_IAR__AR :=$(MTB_TOOLCHAIN_IAR__BASE_DIR)/bin/iarchive
+MTB_TOOLCHAIN_IAR__LD :=$(MTB_TOOLCHAIN_IAR__BASE_DIR)/bin/ilinkarm
+
 
 ################################################################################
 # Macros
 ################################################################################
 
-#
+# Elf to bin conversion tool
+MTB_TOOLCHAIN_IAR__ELF2BIN:=$(MTB_TOOLCHAIN_GCC_ARM__ELF2BIN)
+
 # Run ELF2BIN conversion
 # $(1) : artifact elf
 # $(2) : artifact bin
-#
-CY_MACRO_ELF2BIN=$(CY_TOOLCHAIN_ELF2BIN) -O binary $1 $2
-
-
-################################################################################
-# Tools
-################################################################################
-
-#
-# The base path to the IAR cross compilation executables
-#
-ifeq ($(CY_COMPILER_PATH),)
-# Remove quotes and escapes from the path
-CY_CROSSPATH=$(call CY_MACRO_GET_RAW_PATH,$(CY_COMPILER_IAR_DIR))
-else
-CY_CROSSPATH=$(call CY_MACRO_GET_RAW_PATH,$(CY_COMPILER_PATH))
-endif
-
-#
-# Build tools
-#
-CC="$(CY_CROSSPATH)/bin/iccarm"
-CXX=$(CC)
-AS="$(CY_CROSSPATH)/bin/iasmarm"
-AR="$(CY_CROSSPATH)/bin/iarchive"
-LD="$(CY_CROSSPATH)/bin/ilinkarm"
-
-#
-# Elf to bin conversion tool
-#
-CY_TOOLCHAIN_ELF2BIN=$(CY_INTERNAL_TOOL_arm-none-eabi-objcopy_EXE)
+mtb_toolchain_IAR__elf2bin=$(MTB_TOOLCHAIN_IAR__ELF2BIN) -O binary $1 $2
 
 
 ################################################################################
 # Options
 ################################################################################
 
-#
 # DEBUG/NDEBUG selection
-#
 ifeq ($(CONFIG),Debug)
-CY_TOOLCHAIN_DEBUG_FLAG=-DDEBUG=DEBUG
-CY_TOOLCHAIN_OPTIMIZATION=-Ol
+_MTB_TOOLCHAIN_IAR__DEBUG_FLAG:=-DDEBUG=DEBUG
+_MTB_TOOLCHAIN_IAR__OPTIMIZATION:=-Ol
 else
 ifeq ($(CONFIG),Release)
-CY_TOOLCHAIN_DEBUG_FLAG=-DNDEBUG
-CY_TOOLCHAIN_OPTIMIZATION=-Ohs
+_MTB_TOOLCHAIN_IAR__DEBUG_FLAG:=-DNDEBUG
+_MTB_TOOLCHAIN_IAR__OPTIMIZATION:=-Ohs
 else
-CY_TOOLCHAIN_DEBUG_FLAG=
-CY_TOOLCHAIN_OPTIMIZATION=
+_MTB_TOOLCHAIN_IAR__DEBUG_FLAG:=
+_MTB_TOOLCHAIN_IAR__OPTIMIZATION:=
 endif
 endif
 
-#
 # Flags common to compile and link
-#
 ifneq ($(VERBOSE),)
-CY_TOOLCHAIN_SILENT_CFLAGS=
-CY_TOOLCHAIN_SILENT_SFLAGS=
+_MTB_TOOLCHAIN_IAR__SILENT_CFLAGS:=
+_MTB_TOOLCHAIN_IAR__SILENT_SFLAGS:=
 else
-CY_TOOLCHAIN_SILENT_CFLAGS=--silent
-CY_TOOLCHAIN_SILENT_SFLAGS=-S
+_MTB_TOOLCHAIN_IAR__SILENT_CFLAGS:=--silent
+_MTB_TOOLCHAIN_IAR__SILENT_SFLAGS:=-S
 endif
 
-#
 # CPU core specifics
-#
-ifeq ($(CORE),CM0)
-CY_TOOLCHAIN_FLAGS_CORE=--cpu Cortex-M0
-CY_TOOLCHAIN_VFP_FLAGS=
-else ifeq ($(CORE),CM0P)
-CY_TOOLCHAIN_FLAGS_CORE=--cpu Cortex-M0+
-CY_TOOLCHAIN_VFP_FLAGS=
-else ifeq ($(CORE),CM4)
-CY_TOOLCHAIN_FLAGS_CORE=--cpu Cortex-M4
-CY_TOOLCHAIN_VFP_FLAGS=--fpu FPv4-SP
-ifeq ($(VFP_SELECT),hardfp)
-CY_TOOLCHAIN_VFP_CFLAGS=$(CY_TOOLCHAIN_VFP_FLAGS) --aapcs vfp
-else ifeq ($(VFP_SELECT),softfloat)
-CY_TOOLCHAIN_VFP_FLAGS=
-CY_TOOLCHAIN_VFP_CFLAGS=
-else
-CY_TOOLCHAIN_VFP_CFLAGS=$(CY_TOOLCHAIN_VFP_FLAGS) --aapcs std
+ifeq ($(MTB_RECIPE__CORE),CM0)
+# Arm Cortex-M0 CPU
+_MTB_TOOLCHAIN_IAR__FLAGS_CORE:=--cpu Cortex-M0
+_MTB_TOOLCHAIN_IAR__VFP_FLAGS:=
 endif
-else ifeq ($(CORE),CM33)
-ifeq ($(DSPEXT),no)
-CY_TOOLCHAIN_FLAGS_CORE=--cpu Cortex-M33.no_dsp 
-else
-CY_TOOLCHAIN_FLAGS_CORE=--cpu Cortex-M33 
+
+ifeq ($(MTB_RECIPE__CORE),CM0P)
+# Arm Cortex-M0+ CPU
+_MTB_TOOLCHAIN_IAR__FLAGS_CORE:=--cpu Cortex-M0+
+_MTB_TOOLCHAIN_IAR__VFP_FLAGS:=
 endif
-CY_TOOLCHAIN_VFP_FLAGS=--fpu FPv5-SP
+
+ifeq ($(MTB_RECIPE__CORE),CM4)
+# Arm Cortex-M4 CPU
+_MTB_TOOLCHAIN_IAR__FLAGS_CORE=--cpu Cortex-M4
+_MTB_TOOLCHAIN_IAR__VFP_FLAGS=--fpu FPv4-SP
 ifeq ($(VFP_SELECT),hardfp)
-CY_TOOLCHAIN_VFP_CFLAGS=$(CY_TOOLCHAIN_VFP_FLAGS) --aapcs vfp
+# FPv4 FPU, hardfp, single-precision
+_MTB_TOOLCHAIN_IAR__VFP_CFLAGS=$(_MTB_TOOLCHAIN_IAR__VFP_FLAGS) --aapcs vfp
 else ifeq ($(VFP_SELECT),softfloat)
-CY_TOOLCHAIN_VFP_FLAGS=
-CY_TOOLCHAIN_VFP_CFLAGS=
+# Software FP
+_MTB_TOOLCHAIN_IAR__VFP_FLAGS:=
+_MTB_TOOLCHAIN_IAR__VFP_CFLAGS:=
 else
-CY_TOOLCHAIN_VFP_CFLAGS=$(CY_TOOLCHAIN_VFP_FLAGS) --aapcs std
+# FPv4 FPU, softfp, single-precision
+_MTB_TOOLCHAIN_IAR__VFP_CFLAGS=$(_MTB_TOOLCHAIN_IAR__VFP_FLAGS) --aapcs std
 endif
 endif
 
-#
 # Command line flags for c-files
-#
-CY_TOOLCHAIN_CFLAGS=\
+MTB_TOOLCHAIN_IAR__CFLAGS:=\
 	-c\
-	$(CY_TOOLCHAIN_FLAGS_CORE)\
-	$(CY_TOOLCHAIN_OPTIMIZATION)\
-	$(CY_TOOLCHAIN_VFP_CFLAGS)\
-	$(CY_TOOLCHAIN_SILENT_CFLAGS)\
+	$(_MTB_TOOLCHAIN_IAR__FLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_IAR__OPTIMIZATION)\
+	$(_MTB_TOOLCHAIN_IAR__VFP_CFLAGS)\
+	$(_MTB_TOOLCHAIN_IAR__SILENT_CFLAGS)\
 	--endian=little\
 	-e\
 	--enable_restrict\
 	--no_wrap_diagnostics
 
 ifeq ($(CONFIG),Debug)
-CY_TOOLCHAIN_CFLAGS+=--debug
+MTB_TOOLCHAIN_IAR__CFLAGS+=--debug
 endif
 
-#
 # Command line flags for cpp-files
-#
-CY_TOOLCHAIN_CXXFLAGS=\
-	$(CY_TOOLCHAIN_CFLAGS)\
+MTB_TOOLCHAIN_IAR__CXXFLAGS:=\
+	$(MTB_TOOLCHAIN_IAR__CFLAGS)\
 	--c++\
 	--no_rtti\
 	--no_exceptions
 
-#
 # Command line flags for s-files
-#
-CY_TOOLCHAIN_ASFLAGS=\
+MTB_TOOLCHAIN_IAR__ASFLAGS:=\
 	-c\
-	$(CY_TOOLCHAIN_FLAGS_CORE)\
-	$(CY_TOOLCHAIN_VFP_FLAGS)\
-	$(CY_TOOLCHAIN_SILENT_SFLAGS)\
+	$(_MTB_TOOLCHAIN_IAR__FLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_IAR__VFP_FLAGS)\
+	$(_MTB_TOOLCHAIN_IAR__SILENT_SFLAGS)\
 	-s+\
 	-w+\
 	-r
 
-#
 # Command line flags for linking
-#
-CY_TOOLCHAIN_LDFLAGS=\
-	$(CY_TOOLCHAIN_FLAGS_CORE)\
-	$(CY_TOOLCHAIN_VFP_FLAGS)\
-	$(CY_TOOLCHAIN_SILENT_CFLAGS)\
+MTB_TOOLCHAIN_IAR__LDFLAGS:=\
+	$(_MTB_TOOLCHAIN_IAR__FLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_IAR__VFP_FLAGS)\
+	$(_MTB_TOOLCHAIN_IAR__SILENT_CFLAGS)\
 	--manual_dynamic_initialization
 
-#
+
 # Command line flags for archiving
-#
-CY_TOOLCHAIN_ARFLAGS=\
+MTB_TOOLCHAIN_IAR__ARFLAGS:=\
 	--create\
 	--verbose
 
-#
 # Enable Multi-Threaded build arguments
-#
 # Note: If these FreeRTOS-specific flags are modified, the instructions in ide.mk should be updated to reflect the changes.
 ifeq ($(filter FREERTOS,$(COMPONENTS)),FREERTOS)
-CY_TOOLCHAIN_CFLAGS+=--dlib_config=full
-CY_TOOLCHAIN_CXXFLAGS+=--dlib_config=full
-CY_TOOLCHAIN_LDFLAGS+=--threaded_lib
+MTB_TOOLCHAIN_IAR__CFLAGS  +=--dlib_config=full
+MTB_TOOLCHAIN_IAR__CXXFLAGS+=--dlib_config=full
+MTB_TOOLCHAIN_IAR__LDFLAGS +=--threaded_lib
 endif
 
-#
 # Toolchain-specific suffixes
-#
-CY_TOOLCHAIN_SUFFIX_S=S
-CY_TOOLCHAIN_SUFFIX_s=s
-CY_TOOLCHAIN_SUFFIX_C=c
-CY_TOOLCHAIN_SUFFIX_H=h
-CY_TOOLCHAIN_SUFFIX_CPP=cpp
-CY_TOOLCHAIN_SUFFIX_HPP=hpp
-CY_TOOLCHAIN_SUFFIX_O=o
-CY_TOOLCHAIN_SUFFIX_A=a
-CY_TOOLCHAIN_SUFFIX_D=d
-CY_TOOLCHAIN_SUFFIX_LS=icf
-CY_TOOLCHAIN_SUFFIX_MAP=map
-CY_TOOLCHAIN_SUFFIX_TARGET=elf
-CY_TOOLCHAIN_SUFFIX_PROGRAM=hex
-CY_TOOLCHAIN_SUFFIX_ARCHIVE=a
+MTB_TOOLCHAIN_IAR__SUFFIX_S  :=S
+MTB_TOOLCHAIN_IAR__SUFFIX_s  :=s
+MTB_TOOLCHAIN_IAR__SUFFIX_C  :=c
+MTB_TOOLCHAIN_IAR__SUFFIX_H  :=h
+MTB_TOOLCHAIN_IAR__SUFFIX_CPP:=cpp
+MTB_TOOLCHAIN_IAR__SUFFIX_CXX:=cxx
+MTB_TOOLCHAIN_IAR__SUFFIX_CC :=cc
+MTB_TOOLCHAIN_IAR__SUFFIX_HPP:=hpp
+MTB_TOOLCHAIN_IAR__SUFFIX_O  :=o
+MTB_TOOLCHAIN_IAR__SUFFIX_A  :=a
+MTB_TOOLCHAIN_IAR__SUFFIX_D  :=d
+MTB_TOOLCHAIN_IAR__SUFFIX_LS :=icf
+MTB_TOOLCHAIN_IAR__SUFFIX_MAP:=map
+MTB_TOOLCHAIN_IAR__SUFFIX_TARGET:=elf
+MTB_TOOLCHAIN_IAR__SUFFIX_PROGRAM:=hex
 
-#
 # Toolchain specific flags
-#
-CY_TOOLCHAIN_OUTPUT_OPTION=-o
-CY_TOOLCHAIN_ARCHIVE_LIB_OUTPUT_OPTION=-o
-CY_TOOLCHAIN_MAPFILE=--map=
-CY_TOOLCHAIN_LSFLAGS=--config=
-CY_TOOLCHAIN_INCRSPFILE=-f 
-CY_TOOLCHAIN_INCRSPFILE_ASM=-f 
-CY_TOOLCHAIN_OBJRSPFILE=-f 
+MTB_TOOLCHAIN_IAR__OUTPUT_OPTION:=-o
+MTB_TOOLCHAIN_IAR__ARCHIVE_LIB_OUTPUT_OPTION:=-o
+MTB_TOOLCHAIN_IAR__MAPFILE:=--map=
+MTB_TOOLCHAIN_IAR__LSFLAGS:=--config=
+MTB_TOOLCHAIN_IAR__INCRSPFILE:=-f 
+MTB_TOOLCHAIN_IAR__INCRSPFILE_ASM:=-f 
+MTB_TOOLCHAIN_IAR__OBJRSPFILE:=-f 
 
-#
 # Produce a makefile dependency rule for each input file
-#
-CY_TOOLCHAIN_DEPENDENCIES=--dependencies=m "$(subst .$(CY_TOOLCHAIN_SUFFIX_O),.$(CY_TOOLCHAIN_SUFFIX_D),$@)"
-CY_TOOLCHAIN_EXPLICIT_DEPENDENCIES=--dependencies=m "$$(subst .$(CY_TOOLCHAIN_SUFFIX_O),.$(CY_TOOLCHAIN_SUFFIX_D),$$@)"
+MTB_TOOLCHAIN_IAR__DEPENDENCIES=--dependencies=m "$(@:.$(MTB_TOOLCHAIN_IAR__SUFFIX_O)=.$(MTB_TOOLCHAIN_IAR__SUFFIX_D))"
+MTB_TOOLCHAIN_IAR__EXPLICIT_DEPENDENCIES=--dependencies=m "$$(@:.$(MTB_TOOLCHAIN_IAR__SUFFIX_O)=.$(MTB_TOOLCHAIN_IAR__SUFFIX_D))"
 
-#
-# Additional includes in the compilation process based on this
-# toolchain
-#
-CY_TOOLCHAIN_INCLUDES=
+# Additional includes in the compilation process based on this toolchain
+MTB_TOOLCHAIN_IAR__INCLUDES:=
 
-#
 # Additional libraries in the link process based on this toolchain
-#
-CY_TOOLCHAIN_DEFINES=
-
+MTB_TOOLCHAIN_IAR__DEFINES:=$(_MTB_TOOLCHAIN_IAR__DEBUG_FLAG)

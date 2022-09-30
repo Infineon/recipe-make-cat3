@@ -28,12 +28,12 @@ $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
 program:
-	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for program purpose)
+	$(call mtb__error,CLI program is not supported for the current device. Use IDE for program purpose)
 qprogram:
-	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for program purpose)
+	$(call mtb__error,CLI program is not supported for the current device. Use IDE for program purpose)
 debug:
-	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)
+	$(call mtb__error,CLI program is not supported for the current device. Use IDE for debug)
 qdebug:
-	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)
+	$(call mtb__error,CLI program is not supported for the current device. Use IDE for debug)
 attach:
-	$(call CY_MACRO_ERROR,CLI program is not supported for the current device. Use IDE for debug)
+	$(call mtb__error,CLI program is not supported for the current device. Use IDE for debug)

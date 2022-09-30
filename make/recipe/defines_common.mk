@@ -27,129 +27,142 @@ $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
 ################################################################################
-# BSP Generation
+# BSP
 ################################################################################
 
-# Move old templates files from the old bsp to a file with .bak extension
-CY_BACK_OLD_BSP_TEMPLATES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/backup_bsp_template.bash "$(CY_FIND)" "$(CY_TEMPLATES_DIR)" "$(CY_BSP_DESTINATION_ABSOLUTE)" "$(CY_SEARCH_FILES_CMD)";
-
-# Command for copying linker scripts and starups (Note: this doesn't get expanded and used until "bsp" target)
-
-# The find commands cannot be condensed into a single find.
-# The find's exec command has a very small character limit, such that if they finds were condensed it would crash.
-CY_BSP_TEMPLATES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/copy_bsp_template.bash "$(CY_FIND)" "$(CY_BSP_TEMPLATES_DIR)" "$(CY_BSP_DESTINATION_ABSOLUTE)" "$(CY_BSP_SEARCH_FILES_CMD)" "$(CY_BSP_LINKER_SCRIPT)" "$(CY_BSP_STARTUP)" "$(CY_INTERNAL_BSP_TARGET_CREATE_BACK_UP)";
-
-# Command for updating the device(s) (Note: this doesn't get expanded and used until "bsp" target)
-CY_BSP_DEVICES_CMD=$(CY_BASH) $(CY_INTERNAL_BASELIB_PATH)/make/scripts/run_bsp_device_configurator.bash "$(CY_FIND)" "$(CY_TARGET_GEN_DIR)" "$(DEVICE_GEN)" "$(ADDITIONAL_DEVICES)" "$(CY_CONFIG_MODUS_EXEC)" "$(CY_CONFIG_LIBFILE)";
-
-ifneq ($(CY_QSPI_FLM_DIR),)
-CY_BSP_UPDATE_FLASH_LOADER_CMD=$(if $(wildcard $(CY_OPEN_qspi_configurator_OUTPUT_DIR)/*.$(CY_OPEN_qspi_configurator_EXT)),\
-	$(CY_INTERNAL_TOOLS)/$(CY_TOOL_qspi-configurator-cli_EXE) --config $(wildcard $(CY_OPEN_qspi_configurator_OUTPUT_DIR)/*.$(CY_OPEN_qspi_configurator_EXT)) --flashloader-dir $(CY_QSPI_FLM_DIR),);
-else
-CY_BSP_UPDATE_FLASH_LOADER_CMD=
+ifneq (1,$(words $(DEVICE_$(DEVICE)_CORES)))
+_MTB_RECIPE__IS_MULTI_CORE_DEVICE:=true
 endif
+
+ifneq (,$(filter StandardSecure,$(DEVICE_$(DEVICE)_FEATURES)))
+_MTB_RECIPE__IS_SECURE_DEVICE:=true
+endif
+ifneq (,$(filter SecureBoot,$(DEVICE_$(DEVICE)_FEATURES)))
+_MTB_RECIPE__IS_SECURE_DEVICE:=true
+endif
+
+_MTB_RECIPE__DEVICE_DIE:=$(DEVICE_$(DEVICE)_DIE)
+
+_MTB_RECIPE__DEVICE_FLASH_KB:=$(DEVICE_$(DEVICE)_FLASH_KB)
 
 ################################################################################
 # Paths
 ################################################################################
 
+ifeq ($(MTB_TYPE),PROJECT)
+# Application build output is one level up relative to the project directory
+_MTB_RECIPE__APP_HEX_DIR:=../build
+_MTB_RECIPE__PRJ_HEX_DIR:=$(_MTB_RECIPE__APP_HEX_DIR)/project_hex
+
+# Override the hex path for qprogram_proj target
+ifneq ($(MTB_APPLICATION_SUBPROJECTS),)
+_MTB_RECIPE__APP_HEX_FILE:=$(call mtb__path_normalize,$(_MTB_RECIPE__APP_HEX_DIR)/app_combined.$(MTB_RECIPE__SUFFIX_PROGRAM))
+endif
+endif
+
 # Set the output file paths
+_MTB_RECIPE__BUILD_PATH_RELATIVE:=$(notdir $(MTB_TOOLS__OUTPUT_BASE_DIR))/$(TARGET)/$(CONFIG)
+_MTB_RECIPE__BUILD_APPLICATION_PATH_RELATIVE:=$(notdir $(MTB_TOOLS__PRJ_DIR))/$(_MTB_RECIPE__BUILD_PATH_RELATIVE)
+_MTB_RECIPE__COMBINED_HEX_RELATIVE:=$(patsubst $(call mtb__path_normalize,$(MTB_TOOLS__PRJ_DIR)/../)/%,%,$(_MTB_RECIPE__APP_HEX_FILE))
+
 ifneq ($(CY_BUILD_LOCATION),)
-CY_SYM_FILE?=$(CY_INTERNAL_BUILD_LOC)/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
-CY_PROG_FILE?=$(CY_INTERNAL_BUILD_LOC)/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
-else
-CY_SYM_FILE?=\$$\{cy_prj_path\}/$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
-CY_PROG_FILE?=\$$\{cy_prj_path\}/$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
+_MTB_RECIPE__ECLIPSE_SYM_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__ECLIPSE_PROG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+ifeq ($(MTB_TYPE),PROJECT)
+_MTB_RECIPE__ECLIPSE_PROG_FILE:=$(_MTB_RECIPE__APP_HEX_FILE)
 endif
-
-# Search for device support path only when CY_DEVICESUPPORT_PATH is not defined otherwise use CY_INTERNAL_DEVICESUPPORT_PATH
-ifeq ($(CY_DEVICESUPPORT_PATH),)
-CY_CONDITIONAL_DEVICESUPPORT_PATH:=$(call CY_MACRO_DIR,$(firstword $(CY_DEVICESUPPORT_SEARCH_PATH)))
 else
-CY_CONDITIONAL_DEVICESUPPORT_PATH:=$(firstword $(CY_INTERNAL_DEVICESUPPORT_PATH))
+_MTB_RECIPE__ECLIPSE_SYM_FILE:=$${cy_prj_path}/$(_MTB_RECIPE__BUILD_PATH_RELATIVE)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__ECLIPSE_PROG_FILE:=$${cy_prj_path}/$(_MTB_RECIPE__BUILD_PATH_RELATIVE)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+ifeq ($(MTB_TYPE),PROJECT)
+_MTB_RECIPE__ECLIPSE_PROG_FILE:=$${cy_prj_path}/../$(_MTB_RECIPE__COMBINED_HEX_RELATIVE)
 endif
-
+endif
 
 ################################################################################
 # IDE specifics
 ################################################################################
-
+MTB_RECIPE__IDE_RECIPE_DATA_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/ide_recipe_data.temp
+MTB_RECIPE__IDE_RECIPE_METADATA_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/ide_recipe_metadata.temp
+_MTB_ECLIPSE_OPENOCD_SVD_PATH:=$${cy_prj_path}/$(DEVICE_$(DEVICE)_SVD)
 # Eclipse
 ifeq ($(filter eclipse,$(MAKECMDGOALS)),eclipse)
-CY_ECLIPSE_ARGS+="s|&&CY_OPENOCD_CFG&&|$(CY_OPENOCD_DEVICE_CFG)|g;"\
-				"s|&&CY_OPENOCD_CHIP&&|$(CY_OPENOCD_CHIP_NAME)|g;"\
-				"s|&&CY_APPNAME&&|$(CY_IDE_PRJNAME)|;"\
-				"s|&&CY_CONFIG&&|$(CONFIG)|;"\
-				"s|&&CY_SVD_PATH&&|$(CY_ECLIPSE_OPENOCD_SVD_PATH)|g;"\
-				"s|&&CY_SYM_FILE&&|$(CY_SYM_FILE)|;"\
-				"s|&&CY_PROG_FILE&&|$(CY_PROG_FILE)|;"\
-				"s|&&CY_ECLIPSE_GDB&&|$(CY_ECLIPSE_GDB)|g;"
+eclipse_textdata_file_common:
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__OPENOCD_CFG&&=$(_MTB_RECIPE__OPENOCD_DEVICE_CFG))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__OPENOCD_CHIP&&=$(_MTB_RECIPE__OPENOCD_CHIP_NAME))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__APPNAME&&=$(CY_IDE_PRJNAME))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__CONFIG&&=$(CONFIG))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__SVD_PATH&&=$(_MTB_ECLIPSE_OPENOCD_SVD_PATH))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__SYM_FILE&&=$(_MTB_RECIPE__ECLIPSE_SYM_FILE))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__PROG_FILE&&=$(_MTB_RECIPE__ECLIPSE_PROG_FILE))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&_MTB_RECIPE__ECLIPSE_GDB&&=$(CY_ECLIPSE_GDB))
+	$(call mtb__file_append,$(MTB_RECIPE__IDE_RECIPE_DATA_FILE),&&MTB_APPLICATION_NAME&&=$(_MTB_ECLIPSE_APPLICATION_NAME))
+
+eclipse_textdata_file : eclipse_textdata_file_common
 endif
 
 # VSCode
 ifeq ($(filter vscode,$(MAKECMDGOALS)),vscode)
-CY_GCC_BASE_DIR=$(subst $(CY_INTERNAL_TOOLS)/,,$(CY_INTERNAL_TOOL_gcc_BASE))
-CY_GCC_VERSION=$(shell $(CY_INTERNAL_TOOL_arm-none-eabi-gcc_EXE) -dumpversion)
-CY_OPENOCD_EXE_DIR=$(patsubst $(CY_INTERNAL_TOOLS)/%,%,$(CY_INTERNAL_TOOL_openocd_EXE))
-CY_OPENOCD_SCRIPTS_DIR=$(patsubst $(CY_INTERNAL_TOOLS)/%,%,$(CY_INTERNAL_TOOL_openocd_scripts_SCRIPT))
+_MTB_RECIPE__GCC_BASE_DIR:=$(subst $(MTB_TOOLS__TOOLS_DIR)/,,$(MTB_TOOLCHAIN_GCC_ARM__BASE_DIR))
+_MTB_RECIPE__GCC_VERSION:=$(shell $(MTB_TOOLCHAIN_GCC_ARM__CC) -dumpversion)
+_MTB_RECIPE__OPENOCD_EXE_DIR_RELATIVE:=$(CY_TOOL_openocd_EXE)
+_MTB_RECIPE__OPENOCD_SCRIPTS_DIR_RELATIVE:=$(CY_TOOL_openocd_scripts_SCRIPT)
 
 ifneq ($(CY_BUILD_LOCATION),)
-CY_ELF_FILE?=$(CY_INTERNAL_BUILD_LOC)/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
-CY_HEX_FILE?=$(CY_INTERNAL_BUILD_LOC)/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
+_MTB_RECIPE__ELF_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__ELF_FILE_APPLICATION:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__HEX_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+ifeq ($(MTB_TYPE),PROJECT)
+_MTB_RECIPE__HEX_FILE:=$(_MTB_RECIPE__APP_HEX_FILE)
+endif
 else
-CY_ELF_FILE?=./$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
-CY_HEX_FILE?=./$(notdir $(CY_INTERNAL_BUILD_LOC))/$(TARGET)/$(CONFIG)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
+_MTB_RECIPE__ELF_FILE:=./$(_MTB_RECIPE__BUILD_PATH_RELATIVE)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__ELF_FILE_APPLICATION:=./$(_MTB_RECIPE__BUILD_APPLICATION_PATH_RELATIVE)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+_MTB_RECIPE__HEX_FILE:=./$(_MTB_RECIPE__BUILD_PATH_RELATIVE)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+_MTB_RECIPE__HEX_FILE_APPLICATION:=./$(_MTB_RECIPE__COMBINED_HEX_RELATIVE)
+ifeq ($(MTB_TYPE),PROJECT)
+_MTB_RECIPE__HEX_FILE:=../$(_MTB_RECIPE__COMBINED_HEX_RELATIVE)
+endif
 endif
 
-CY_C_FLAGS=$(subst $(CY_SPACE),\"$(CY_COMMA)$(CY_NEWLINE_MARKER)\",$(strip $(CY_RECIPE_CFLAGS)))
+# This must set with = instead of :=
+_MTB_RECIPE__C_FLAGS=$(subst $(MTB__SPACE),\"$(MTB__COMMA)$(MTB__NEWLINE_MARKER)\",$(strip $(MTB_RECIPE__CFLAGS)))
 
 ifeq ($(CY_ATTACH_SERVER_TYPE),)
 CY_ATTACH_SERVER_TYPE=openocd
 endif
 
-CY_VSCODE_ARGS+="s|&&CY_ELF_FILE&&|$(CY_ELF_FILE)|g;"\
-				"s|&&CY_HEX_FILE&&|$(CY_HEX_FILE)|g;"\
-				"s|&&CY_OPEN_OCD_FILE&&|$(CY_OPENOCD_DEVICE_CFG)|g;"\
-				"s|&&CY_SVD_FILE_NAME&&|$(CY_VSCODE_OPENOCD_SVD_PATH)|g;"\
-				"s|&&CY_MTB_PATH&&|$(CY_TOOLS_DIR)|g;"\
-				"s|&&CY_TOOL_CHAIN_DIRECTORY&&|$(subst ",,$(CY_CROSSPATH))|g;"\
-				"s|&&CY_C_FLAGS&&|$(CY_C_FLAGS)|g;"\
-				"s|&&CY_GCC_VERSION&&|$(CY_GCC_VERSION)|g;"\
-				"s|&&CY_OPENOCD_EXE_DIR&&|$(CY_OPENOCD_EXE_DIR)|g;"\
-				"s|&&CY_OPENOCD_SCRIPTS_DIR&&|$(CY_OPENOCD_SCRIPTS_DIR)|g;"\
-				"s|&&CY_CDB_FILE&&|$(CY_CDB_FILE)|g;"\
-				"s|&&CY_CONFIG&&|$(CONFIG)|g;"\
-				"s|&&CY_DEVICE_ATTACH&&|$(CY_JLINK_DEVICE_CFG_ATTACH)|g;"\
-				"s|&&CY_MODUS_SHELL_BASE&&|$(CY_TOOL_modus-shell_BASE)|g;"\
-				"s|&&CY_ATTACH_SERVER_TYPE&&|$(CY_ATTACH_SERVER_TYPE)|g;"
+_MTB_VSCODE_MODUS_SHELL_RELATIVE:=$(CY_TOOL_modus-shell_BASE)
 
+_MTB_VSCODE_SVD_PATH:=$(DEVICE_$(DEVICE)_SVD)
+_MTB_VSCODE_APPLICATION_SVD_PATH=$(patsubst ../%,%,$(_MTB_VSCODE_SVD_PATH))
+
+$(MTB_RECIPE__IDE_RECIPE_DATA_FILE):
+	$(MTB__NOISE)echo "s|&&_MTB_RECIPE__ELF_FILE&&|$(_MTB_RECIPE__ELF_FILE)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__HEX_FILE&&|$(_MTB_RECIPE__HEX_FILE)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__ELF_FILE_APPLICATION&&|$(_MTB_RECIPE__ELF_FILE_APPLICATION)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__HEX_FILE_APPLICATION&&|$(_MTB_RECIPE__HEX_FILE_APPLICATION)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__OPEN_OCD_FILE&&|$(_MTB_RECIPE__OPENOCD_DEVICE_CFG)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__SVD_FILE_NAME&&|$(_MTB_VSCODE_SVD_PATH)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__APPLICATION_SVD_FILE_NAME&&|$(_MTB_VSCODE_APPLICATION_SVD_PATH)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__MTB_PATH&&|$(CY_TOOLS_DIR)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__TOOL_CHAIN_DIRECTORY&&|$(subst ",,$(CY_CROSSPATH))|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__C_FLAGS&&|$(_MTB_RECIPE__C_FLAGS)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__GCC_VERSION&&|$(_MTB_RECIPE__GCC_VERSION)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__OPENOCD_EXE_DIR_RELATIVE&&|$(_MTB_RECIPE__OPENOCD_EXE_DIR_RELATIVE)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__OPENOCD_SCRIPTS_DIR_RELATIVE&&|$(_MTB_RECIPE__OPENOCD_SCRIPTS_DIR_RELATIVE)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__CONFIG&&|$(CONFIG)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__DEVICE_ATTACH&&|$(_MTB_RECIPE__JLINK_DEVICE_CFG_ATTACH)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__MODUS_SHELL_BASE&&|$(_MTB_VSCODE_MODUS_SHELL_RELATIVE)|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__ATTACH_SERVER_TYPE&&|$(CY_ATTACH_SERVER_TYPE)|g;" >> $@;
 ifeq ($(CY_USE_CUSTOM_GCC),true)
-CY_VSCODE_ARGS+="s|&&CY_GCC_BIN_DIR&&|$(CY_INTERNAL_TOOL_gcc_BASE)/bin|g;"\
-				"s|&&CY_GCC_DIRECTORY&&|$(CY_INTERNAL_TOOL_gcc_BASE)|g;"
+	$(MTB__NOISE)echo "s|&&_MTB_RECIPE__GCC_BIN_DIR&&|$(MTB_TOOLCHAIN_GCC_ARM__BASE_DIR)/bin|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__GCC_DIRECTORY&&|$(MTB_TOOLCHAIN_GCC_ARM__BASE_DIR)|g;" >> $@;
 else
-CY_VSCODE_ARGS+="s|&&CY_GCC_BIN_DIR&&|$$\{config:modustoolbox.toolsPath\}/$(CY_GCC_BASE_DIR)/bin|g;"\
-				"s|&&CY_GCC_DIRECTORY&&|$$\{config:modustoolbox.toolsPath\}/$(CY_GCC_BASE_DIR)|g;"
-endif
-endif
-
-################################################################################
-# Tools specifics
-################################################################################
-
-ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_CAPSENSE)))
-CY_SUPPORTED_TOOL_TYPES+=capsense-configurator capsense-tuner
+	$(MTB__NOISE)echo "s|&&_MTB_RECIPE__GCC_BIN_DIR&&|$$\{config:modustoolbox.toolsPath\}/$(_MTB_RECIPE__GCC_BASE_DIR)/bin|g;" >> $@;\
+	echo "s|&&_MTB_RECIPE__GCC_DIRECTORY&&|$$\{config:modustoolbox.toolsPath\}/$(_MTB_RECIPE__GCC_BASE_DIR)|g;" >> $@;
 endif
 
-CY_BT_ENABLED_DEVICE_COMPONENTS=43012 4343W 43438
-ifneq ($(filter $(CY_BT_ENABLED_DEVICE_COMPONENTS),$(COMPONENTS)),)
-CY_SUPPORTED_TOOL_TYPES+=bt-configurator
-CY_OPEN_bt_configurator_DEVICE=--device 43xxx
-endif
-
-ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_WITH_FS_USB)))
-CY_SUPPORTED_TOOL_TYPES+=usbdev-configurator
-endif
-
-ifneq (,$(findstring $(DEVICE),$(CY_DEVICES_SECURE)))
-CY_SUPPORTED_TOOL_TYPES+=secure-policy-configurator
+$(MTB_RECIPE__IDE_RECIPE_DATA_FILE) : $(MTB_RECIPE__IDE_RECIPE_DATA_FILE)_vscode
+.PHONY: $(MTB_RECIPE__IDE_RECIPE_DATA_FILE)_vscode
 endif

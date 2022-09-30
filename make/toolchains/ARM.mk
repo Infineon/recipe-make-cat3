@@ -28,194 +28,166 @@ endif
 
 
 ################################################################################
-# Macros
-################################################################################
-
-#
-# Run ELF2BIN conversion
-# $(1) : artifact elf
-# $(2) : artifact bin
-#
-CY_MACRO_ELF2BIN=$(CY_TOOLCHAIN_ELF2BIN) --output $2 --bin $1
-
-
-################################################################################
 # Tools
 ################################################################################
 
-#
-#
-# The base path to the ARM Compiler (Clang) cross compilation executables
-#
-ifeq ($(CY_COMPILER_PATH),)
-CY_CROSSPATH=$(CY_COMPILER_ARM_DIR)
+# The base path to the ARM cross compilation executables
+ifneq ($(CY_COMPILER_ARM_DIR),)
+MTB_TOOLCHAIN_ARM__BASE_DIR:=$(call mtb_core__escaped_path,$(CY_COMPILER_ARM_DIR))
 else
-CY_CROSSPATH=$(CY_COMPILER_PATH)
+ifneq ($(CY_COMPILER_PATH),)
+MTB_TOOLCHAIN_ARM__BASE_DIR:=$(call mtb_core__escaped_path,$(CY_COMPILER_PATH))
+else
+MTB_TOOLCHAIN_ARM__BASE_DIR:=C:/Program\ Files/ARMCompiler6.16
+endif
 endif
 
-#
-# Build tools
-#
-CC=$(CY_CROSSPATH)/bin/armclang
-CXX=$(CC)
-AS=$(CY_CROSSPATH)/bin/armasm
-AR=$(CY_CROSSPATH)/bin/armar
-LD=$(CY_CROSSPATH)/bin/armlink
+# The base path to the Clang cross compilation executables
+ifeq ($(TOOLCHAIN),ARM)
+CY_CROSSPATH:=$(MTB_TOOLCHAIN_ARM__BASE_DIR)
+endif
 
-#
+# Build tools
+MTB_TOOLCHAIN_ARM__CC :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armclang
+MTB_TOOLCHAIN_ARM__CXX:=$(MTB_TOOLCHAIN_ARM__CC)
+MTB_TOOLCHAIN_ARM__AS :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armasm
+MTB_TOOLCHAIN_ARM__AR :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armar
+MTB_TOOLCHAIN_ARM__LD :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armlink
+
+
+################################################################################
+# Macros
+################################################################################
+
 # Elf to bin conversion tool
-#
-CY_TOOLCHAIN_ELF2BIN=$(CY_CROSSPATH)/bin/fromelf
+MTB_TOOLCHAIN_ARM__ELF2BIN:=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/fromelf
+
+# Run ELF2BIN conversion
+# $(1) : artifact elf
+# $(2) : artifact bin
+mtb_toolchain_ARM__elf2bin=$(MTB_TOOLCHAIN_ARM__ELF2BIN) --output $2 --bin $1
 
 
 ################################################################################
 # Options
 ################################################################################
 
-#
 # DEBUG/NDEBUG selection
-#
 ifeq ($(CONFIG),Debug)
-CY_TOOLCHAIN_DEBUG_FLAG=-DDEBUG=DEBUG
-CY_TOOLCHAIN_OPTIMIZATION=-O1
-else 
+_MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DDEBUG=DEBUG
+_MTB_TOOLCHAIN_ARM__OPTIMIZATION:=-O1
+else
 ifeq ($(CONFIG),Release)
-CY_TOOLCHAIN_DEBUG_FLAG=-DNDEBUG
-CY_TOOLCHAIN_OPTIMIZATION=-Oz
+_MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DNDEBUG
+_MTB_TOOLCHAIN_ARM__OPTIMIZATION:=-Oz
 else
-CY_TOOLCHAIN_DEBUG_FLAG=
-CY_TOOLCHAIN_OPTIMIZATION=
+_MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=
+_MTB_TOOLCHAIN_ARM__OPTIMIZATION:=
 endif
 endif
 
-#
 # Flags common to compile and link
-#
-CY_TOOLCHAIN_COMMON_FLAGS=--target=arm-arm-none-eabi
+_MTB_TOOLCHAIN_ARM__COMMON_FLAGS:=--target=arm-arm-none-eabi
 
-#
 # CPU core specifics
-#
-ifeq ($(CORE),CM0)
-CY_TOOLCHAIN_CFLAGS_CORE=-mcpu=cortex-m0
-CY_TOOLCHAIN_FLAGS_CORE=--cpu=Cortex-M0
-CY_TOOLCHAIN_VFP_FLAGS=
-else ifeq ($(CORE),CM0P)
-CY_TOOLCHAIN_CFLAGS_CORE=-mcpu=cortex-m0plus
-CY_TOOLCHAIN_FLAGS_CORE=--cpu=Cortex-M0plus
-CY_TOOLCHAIN_VFP_FLAGS=
-else ifeq ($(CORE),CM4)
-CY_TOOLCHAIN_CFLAGS_CORE=-mcpu=cortex-m4
-CY_TOOLCHAIN_FLAGS_CORE=--cpu=Cortex-M4
+ifeq ($(MTB_RECIPE__CORE),CM0)
+# Arm Cortex-M0 CPU
+_MTB_TOOLCHAIN_ARM__CFLAGS_CORE:=-mcpu=cortex-m0
+_MTB_TOOLCHAIN_ARM__FLAGS_CORE:=--cpu=Cortex-M0
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS0:=
+endif
+
+ifeq ($(MTB_RECIPE__CORE),CM0P)
+# Arm Cortex-M0P CPU
+_MTB_TOOLCHAIN_ARM__CFLAGS_CORE:=-mcpu=cortex-m0plus
+_MTB_TOOLCHAIN_ARM__FLAGS_CORE:=--cpu=Cortex-M0plus
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS:=
+endif
+
+ifeq ($(MTB_RECIPE__CORE),CM4)
+# Arm Cortex-M4 CPU
+_MTB_TOOLCHAIN_ARM__CFLAGS_CORE:=-mcpu=cortex-m4
+_MTB_TOOLCHAIN_ARM__FLAGS_CORE:=--cpu=Cortex-M4
 ifeq ($(VFP_SELECT),hardfp)
-CY_TOOLCHAIN_VFP_CFLAGS=-mfloat-abi=hard -mfpu=fpv4-sp-d16
-CY_TOOLCHAIN_VFP_FLAGS=--fpu=FPv4-SP
+# FPv4 FPU, hardfp, single-precision
+_MTB_TOOLCHAIN_ARM__VFP_CFLAGS:=-mfloat-abi=hard -mfpu=fpv4-sp-d16
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS:=--fpu=FPv4-SP
 else ifeq ($(VFP_SELECT),softfloat)
-CY_TOOLCHAIN_VFP_CFLAGS=
-CY_TOOLCHAIN_VFP_FLAGS=
+# Software FP
+_MTB_TOOLCHAIN_ARM__VFP_CFLAGS:=
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS:=
 else
-CY_TOOLCHAIN_VFP_CFLAGS=-mfloat-abi=softfp -mfpu=fpv4-sp-d16
-CY_TOOLCHAIN_VFP_FLAGS=--fpu=SoftVFP+FPv4-SP
-endif
-else ifeq ($(CORE),CM33)
-ifeq ($(DSPEXT),no)
-CY_TOOLCHAIN_CFLAGS_CORE=-mcpu=cortex-m33+nodsp 
-else
-CY_TOOLCHAIN_CFLAGS_CORE=-mcpu=cortex-m33
-endif
-CY_TOOLCHAIN_FLAGS_CORE=--cpu=Cortex-M33
-ifeq ($(VFP_SELECT),hardfp)
-CY_TOOLCHAIN_VFP_CFLAGS=-mfloat-abi=hard -mfpu=fpv5-sp-d16
-CY_TOOLCHAIN_VFP_FLAGS=--fpu=FPv5-SP
-else ifeq ($(VFP_SELECT),softfloat)
-CY_TOOLCHAIN_VFP_CFLAGS=
-CY_TOOLCHAIN_VFP_FLAGS=
-else
-CY_TOOLCHAIN_VFP_CFLAGS=-mfloat-abi=softfp -mfpu=fpv5-sp-d16
-CY_TOOLCHAIN_VFP_FLAGS=--fpu=SoftVFP+FPv5-SP
+# FPv4 FPU, softfp, single-precision
+_MTB_TOOLCHAIN_ARM__VFP_CFLAGS:=-mfloat-abi=softfp -mfpu=fpv4-sp-d16
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS:=--fpu=SoftVFP+FPv4-SP
 endif
 endif
-#
+
+
 # Command line flags for c-files
-#
-CY_TOOLCHAIN_CFLAGS=\
+MTB_TOOLCHAIN_ARM__CFLAGS:=\
 	-c\
-	$(CY_TOOLCHAIN_CFLAGS_CORE)\
-	$(CY_TOOLCHAIN_OPTIMIZATION)\
-	$(CY_TOOLCHAIN_VFP_CFLAGS)\
-	$(CY_TOOLCHAIN_COMMON_FLAGS)\
+	$(_MTB_TOOLCHAIN_ARM__CFLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_ARM__OPTIMIZATION)\
+	$(_MTB_TOOLCHAIN_ARM__VFP_CFLAGS)\
+	$(_MTB_TOOLCHAIN_ARM__COMMON_FLAGS)\
 	-g\
 	-fshort-enums\
 	-fshort-wchar
 
-#
 # Command line flags for cpp-files
-#
-CY_TOOLCHAIN_CXXFLAGS=$(CY_TOOLCHAIN_CFLAGS)
+MTB_TOOLCHAIN_ARM__CXXFLAGS:=$(MTB_TOOLCHAIN_ARM__CFLAGS) -fno-rtti -fno-exceptions
 
-#
 # Command line flags for s-files
-#
-CY_TOOLCHAIN_ASFLAGS=\
-	$(CY_TOOLCHAIN_FLAGS_CORE)\
-	$(CY_TOOLCHAIN_VFP_FLAGS)
+MTB_TOOLCHAIN_ARM__ASFLAGS:=\
+	$(_MTB_TOOLCHAIN_ARM__FLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_ARM__VFP_FLAGS)
 
-#
 # Command line flags for linking
-#
-CY_TOOLCHAIN_LDFLAGS=\
-	$(CY_TOOLCHAIN_FLAGS_CORE)\
-	$(CY_TOOLCHAIN_VFP_FLAGS)\
+MTB_TOOLCHAIN_ARM__LDFLAGS:=\
+	$(_MTB_TOOLCHAIN_ARM__FLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_ARM__VFP_FLAGS)\
 	--info=totals\
 	--stdlib=libc++
 
-#
 # Command line flags for archiving
-#
-CY_TOOLCHAIN_ARFLAGS=-rvs
+MTB_TOOLCHAIN_ARM__ARFLAGS:=-rvs
 
-#
 # Toolchain-specific suffixes
-#
-CY_TOOLCHAIN_SUFFIX_S=S
-CY_TOOLCHAIN_SUFFIX_s=s
-CY_TOOLCHAIN_SUFFIX_C=c
-CY_TOOLCHAIN_SUFFIX_H=h
-CY_TOOLCHAIN_SUFFIX_CPP=cpp
-CY_TOOLCHAIN_SUFFIX_HPP=hpp
-CY_TOOLCHAIN_SUFFIX_O=o
-CY_TOOLCHAIN_SUFFIX_A=ar
-CY_TOOLCHAIN_SUFFIX_D=d
-CY_TOOLCHAIN_SUFFIX_LS=sct
-CY_TOOLCHAIN_SUFFIX_MAP=map
-CY_TOOLCHAIN_SUFFIX_TARGET=elf
-CY_TOOLCHAIN_SUFFIX_PROGRAM=hex
-CY_TOOLCHAIN_SUFFIX_ARCHIVE=ar
+MTB_TOOLCHAIN_ARM__SUFFIX_S  :=S
+MTB_TOOLCHAIN_ARM__SUFFIX_s  :=s
+MTB_TOOLCHAIN_ARM__SUFFIX_C  :=c
+MTB_TOOLCHAIN_ARM__SUFFIX_H  :=h
+MTB_TOOLCHAIN_ARM__SUFFIX_CPP:=cpp
+MTB_TOOLCHAIN_ARM__SUFFIX_CXX:=cxx
+MTB_TOOLCHAIN_ARM__SUFFIX_CC :=cc
+MTB_TOOLCHAIN_ARM__SUFFIX_HPP:=hpp
+MTB_TOOLCHAIN_ARM__SUFFIX_O  :=o
+MTB_TOOLCHAIN_ARM__SUFFIX_A  :=ar
+MTB_TOOLCHAIN_ARM__SUFFIX_D  :=d
+MTB_TOOLCHAIN_ARM__SUFFIX_LS :=sct
+MTB_TOOLCHAIN_ARM__SUFFIX_MAP:=map
+MTB_TOOLCHAIN_ARM__SUFFIX_TARGET:=elf
+MTB_TOOLCHAIN_ARM__SUFFIX_PROGRAM:=hex
 
 #
 # Toolchain specific flags
 #
-CY_TOOLCHAIN_OUTPUT_OPTION=-o
-CY_TOOLCHAIN_ARCHIVE_LIB_OUTPUT_OPTION=
-CY_TOOLCHAIN_MAPFILE=--map --list 
-CY_TOOLCHAIN_LSFLAGS=--scatter 
-CY_TOOLCHAIN_INCRSPFILE=@
-CY_TOOLCHAIN_INCRSPFILE_ASM=--via 
-CY_TOOLCHAIN_OBJRSPFILE=--via 
+MTB_TOOLCHAIN_ARM__OUTPUT_OPTION:=-o
+MTB_TOOLCHAIN_ARM__ARCHIVE_LIB_OUTPUT_OPTION:=
+MTB_TOOLCHAIN_ARM__MAPFILE:=--map --list 
+MTB_TOOLCHAIN_ARM__LSFLAGS:=--scatter 
+MTB_TOOLCHAIN_ARM__INCRSPFILE:=@
+MTB_TOOLCHAIN_ARM__INCRSPFILE_ASM:=--via 
+MTB_TOOLCHAIN_ARM__OBJRSPFILE:=--via 
 
-#
 # Produce a makefile dependency rule for each input file
-#
-CY_TOOLCHAIN_DEPENDENCIES=-MMD -MP -MF "$(subst .$(CY_TOOLCHAIN_SUFFIX_O),.$(CY_TOOLCHAIN_SUFFIX_D),$@)" -MT "$@"
-CY_TOOLCHAIN_EXPLICIT_DEPENDENCIES=-MMD -MP -MF "$$(subst .$(CY_TOOLCHAIN_SUFFIX_O),.$(CY_TOOLCHAIN_SUFFIX_D),$$@)" -MT "$$@"
+MTB_TOOLCHAIN_ARM__DEPENDENCIES=-MMD -MP -MF "$(@:.$(MTB_TOOLCHAIN_ARM__SUFFIX_O)=.$(MTB_TOOLCHAIN_ARM__SUFFIX_D))" -MT "$@"
+MTB_TOOLCHAIN_ARM__EXPLICIT_DEPENDENCIES=-MMD -MP -MF "$$(@:.$(MTB_TOOLCHAIN_ARM__SUFFIX_O)=.$(MTB_TOOLCHAIN_ARM__SUFFIX_D))" -MT "$$@"
 
-#
 # Additional includes in the compilation process based on this
 # toolchain
-#
-CY_TOOLCHAIN_INCLUDES=
+MTB_TOOLCHAIN_ARM__INCLUDES:=
 
-#
 # Additional libraries in the link process based on this toolchain
-#
-CY_TOOLCHAIN_DEFINES=
+MTB_TOOLCHAIN_ARM__DEFINES:=$(_MTB_TOOLCHAIN_ARM__DEBUG_FLAG)

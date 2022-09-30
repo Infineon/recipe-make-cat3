@@ -26,180 +26,192 @@ ifeq ($(WHICHFILE),true)
 $(info Processing $(lastword $(MAKEFILE_LIST)))
 endif
 
+################################################################################
+# QSPI programming flags
+################################################################################
+
+ifneq ($(CY_SECONDSTAGE),)
+
+_MTB_RECIPE__QUERY_EVAL_CONFIG_FILE=$(MTB_TOOLS__OUTPUT_BASE_DIR)/mtbquery-eval-config.mk
+# get the path of design.modus file
+_MTB_RECIPE__CONFIG_MODUS_FILE:=$(filter %.modus,$(CY_SEARCH_ALL_FILES))
+
+ifneq ($(words $(_MTB_RECIPE__CONFIG_MODUS_FILE)),1)
+ifneq ($(words $(_MTB_RECIPE__CONFIG_MODUS_FILE)),0)
+$(warning Multiple .modus files found: $(_MTB_RECIPE__CONFIG_MODUS_FILE) -- using the first.)
+ _MTB_RECIPE__CONFIG_MODUS_FILE:=$(word 1,$(_MTB_RECIPE__CONFIG_MODUS_FILE))
+endif
+endif
+
+_MTB_RECIPE__PROJECT_DIR_NAME=$(notdir $(realpath $(MTB_TOOLS__PRJ_DIR)))
+
+ifeq ($(_MTB_RECIPE__CONFIG_MODUS_FILE),)
+_MTB_RECIPE__CONFIG_MODUS_OUTPUT=
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=
+else
+_MTB_RECIPE__CONFIG_MODUS_OUTPUT=$(call mtb__get_dir,$(_MTB_RECIPE__CONFIG_MODUS_FILE))/GeneratedSource
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=-s &quot;$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)&quot;&\#13;&\#10;
+endif
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH=$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION=$(patsubst $(call mtb_path_normalize,$(MTB_TOOLS__PRJ_DIR)/..)/%,%,$(call mtb_path_normalize,$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)))
+endif
 
 ################################################################################
 # Compiler and linker arguments
 ################################################################################
 
 #
-# Flags construction
-#
-CY_RECIPE_CFLAGS?=\
-	$(CFLAGS)\
-	$(CY_TOOLCHAIN_CFLAGS)
-
-CY_RECIPE_CXXFLAGS?=\
-	$(CXXFLAGS)\
-	$(CY_TOOLCHAIN_CXXFLAGS)
-
-CY_RECIPE_ASFLAGS?=\
-	$(ASFLAGS)\
-	$(CY_TOOLCHAIN_ASFLAGS)
-
-CY_RECIPE_ARFLAGS?=\
-	$(CY_TOOLCHAIN_ARFLAGS)
-
-CY_RECIPE_LDFLAGS?=\
-	$(LDFLAGS)\
-	$(CY_TOOLCHAIN_LDFLAGS)\
-	$(CY_RECIPE_LSFLAG)
-
-#
 # Defines construction
 #
 ifneq ($(DEFINES),)
-CY_RECIPE_USER_DEFINES=$(addprefix -D,$(DEFINES))
+_MTB_RECIPE__USER_DEFINES=$(addprefix -D,$(DEFINES))
 endif
 ifneq ($(LIBNAME),)
-CY_RECIPE_USER_NAME=-DCY_LIBNAME_$(subst -,_,$(LIBNAME))
+_MTB_RECIPE__USER_NAME=-DCY_LIBNAME_$(subst -,_,$(LIBNAME))
 else
-CY_RECIPE_USER_NAME=-DCY_APPNAME_$(subst -,_,$(APPNAME))
+_MTB_RECIPE__USER_NAME=-DCY_APPNAME_$(subst -,_,$(APPNAME))
 endif
 
-CY_RECIPE_DEFINES=\
-	$(CY_RECIPE_USER_DEFINES)\
-	$(CY_RECIPE_USER_NAME)\
-	-D$(subst -,_,$(DEVICE))\
-	-DCY_TARGET_DEVICE=$(subst -,_,$(DEVICE))\
+ifneq (,$(MTB_RECIPE__CORE_NAME))
+_MTB_RECIPE__CORE_NAME_DEFINES=-DCORE_NAME_$(MTB_RECIPE__CORE_NAME)=1
+endif
+
+# Note: _MTB_RECIPE__DEFAULT_COMPONENT is needed as DISABLE_COMPONENTS cannot be empty
+_MTB_RECIPE__COMPONENT_LIST=$(filter-out $(DISABLE_COMPONENTS) _MTB_RECIPE__DEFAULT_COMPONENT,$(MTB_CORE__FULL_COMPONENT_LIST))
+
+MTB_RECIPE__DEFINES=$(sort \
+	$(_MTB_RECIPE__USER_DEFINES)\
+	$(_MTB_RECIPE__USER_NAME)\
 	-DTARGET_$(subst -,_,$(TARGET))\
 	-DCY_TARGET_BOARD=$(subst -,_,$(TARGET))\
-	$(foreach feature,$(CY_COMPONENT_LIST),-DCOMPONENT_$(subst -,_,$(feature)))\
-	$(CY_TOOLCHAIN_DEBUG_FLAG)\
-	$(CY_TOOLCHAIN_DEFINES)\
-	-DCY_SUPPORTS_DEVICE_VALIDATION
+	$(addprefix -DCOMPONENT_,$(subst -,_,$(_MTB_RECIPE__COMPONENT_LIST)))\
+	$(MTB_RECIPE__TOOLCHAIN_DEFINES)\
+	-DCY_SUPPORTS_DEVICE_VALIDATION\
+	$(_MTB_RECIPE__CORE_NAME_DEFINES)\
+	$(addprefix -D, $(subst -,_,$(DEVICE)) $(BSP_DEFINES) $(DEVICE_DEFINES)))
 
 #
 # Includes construction
 #
-CY_RECIPE_INCLUDES=\
+MTB_RECIPE__INCLUDES=\
 	$(addprefix -I,$(INCLUDES))\
-	$(addprefix -I,$(CY_SEARCH_APP_INCLUDES))\
-	$(addprefix -I,$(CY_TOOLCHAIN_INCLUDES))
+	$(addprefix -I,$(MTB_CORE__SEARCH_APP_INCLUDES))\
+	$(addprefix -I,$(MTB_RECIPE__TOOLCHAIN_INCLUDES))
 
 #
 # Sources construction
 #
-CY_RECIPE_SOURCE=$(CY_SEARCH_APP_SOURCE)
+MTB_RECIPE__SOURCE=$(MTB_CORE__SEARCH_APP_SOURCE)
 
 #
 # Libraries construction
 #
-CY_RECIPE_LIBS=$(LDLIBS) $(CY_SEARCH_APP_LIBS)
+MTB_RECIPE__LIBS=$(LDLIBS) $(MTB_CORE__SEARCH_APP_LIBS)
 
 #
 # Generate source step
 #
 ifneq ($(CY_SEARCH_RESOURCE_FILES),)
-CY_RECIPE_RESOURCE_FILES=$(CY_SEARCH_RESOURCE_FILES)
+_MTB_RECIPE__RESOURCE_FILES=$(CY_SEARCH_RESOURCE_FILES)
 CY_RECIPE_GENERATED_FLAG=TRUE
 
 # Define the generated source file. Use := for better performance
-CY_RECIPE_GENERATED:=$(addprefix $(CY_GENERATED_DIR)/,$(addsuffix .$(CY_TOOLCHAIN_SUFFIX_C),\
+CY_RECIPE_GENERATED:=$(addprefix $(MTB_TOOLS__OUTPUT_GENERATED_DIR)/,$(addsuffix .$(MTB_RECIPE__SUFFIX_C),\
 					$(basename $(notdir $(subst .,_,$(CY_SEARCH_RESOURCE_FILES))))))
 
-CY_RECIPE_GENSRC=\
+_MTB_RECIPE__GENSRC=\
 	bash --norc --noprofile\
-	$(CY_BASELIB_CORE_PATH)/make/scripts/genresources.bash\
-	$(CY_BASELIB_CORE_PATH)/make/scripts\
-	$(CY_GENERATED_DIR)/resources.cyrsc\
-	$(CY_INTERNAL_APP_PATH)\
-	$(CY_GENERATED_DIR)\
+	$(MTB_TOOLS__CORE_DIR)/make/scripts/genresources.bash\
+	$(MTB_TOOLS__CORE_DIR)/make/scripts\
+	$(MTB_TOOLS__OUTPUT_GENERATED_DIR)/resources.cyrsc\
+	$(MTB_TOOLS__OUTPUT_GENERATED_DIR)\
 	"MEM"
 endif
 
 #
 # Prebuild step
 #
-CY_RECIPE_PREBUILD?=
+recipe_prebuild:
 
 #
 # Postbuild step
 #
 ifeq ($(LIBNAME),)
 
-CY_RECIPE_OBJCOPY=$(CY_INTERNAL_TOOL_arm-none-eabi-objcopy_EXE)
+recipe_postbuild: $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 
+$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
 ifeq ($(TOOLCHAIN),A_Clang)
-CY_RECIPE_POSTBUILD?=$(CY_RECIPE_ACLANG_POSTBUILD)
-
-else ifeq ($(TOOLCHAIN),ARM)
-ifeq ($(CY_COMPILER_PATH),)
-CY_RECIPE_POSTBUILD?=$(CY_COMPILER_ARM_DIR)/bin/fromelf --output $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM) --i32combined $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
-else
-CY_RECIPE_POSTBUILD?=$(CY_COMPILER_PATH)/bin/fromelf --output $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM) --i32combined $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET)
+	$(_MTB_RECIPE__ACLANG_POSTBUILD)
+endif
+ifeq ($(TOOLCHAIN),ARM)
+	$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/fromelf --output $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) --i32combined $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+endif
+ifeq ($(TOOLCHAIN),IAR)
+	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+endif
+ifeq ($(TOOLCHAIN),GCC_ARM)
+	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 endif
 
-else ifeq ($(TOOLCHAIN),IAR)
-CY_RECIPE_POSTBUILD?=$(CY_RECIPE_OBJCOPY) -O ihex $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET) $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
-
-else ifeq ($(TOOLCHAIN),GCC_ARM)
-ifeq ($(CY_COMPILER_PATH),)
-CY_RECIPE_POSTBUILD?=$(CY_RECIPE_OBJCOPY) -O ihex $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET) $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
-else
-CY_RECIPE_POSTBUILD?=$(CY_COMPILER_PATH)/bin/arm-none-eabi-objcopy -O ihex $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET) $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_PROGRAM)
-endif
+ifeq ($(MTB_TYPE),PROJECT)
+ifeq ($(MTB_APPLICATION_PROMOTE),true)
+recipe_postbuild: $(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 endif
 
+# Copy project-specific program image to the application directory
+$(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+	$(MTB__NOISE)mkdir -p $(_MTB_RECIPE__PRJ_HEX_DIR)
+	cp $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+
+# always regenerate the hex file in case the build dir or config changes
+.PHONY: $(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+
+ifneq ($(MTB_APPLICATION_SUBPROJECTS),)
+# Multi-core application build/qbuild targets run application_postbuild
+# for the first project in the MTB_PROJECTS list
+application_postbuild: $(_MTB_RECIPE__APP_HEX_FILE)
+
+$(_MTB_RECIPE__APP_HEX_FILE): $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM))
+ifeq ($(CY_TOOL_srec_cat_EXE_ABS),)
+	$(call mtb__error,Unable to proceed. srec_cat executable not found)
 endif
+	$(CY_TOOL_srec_cat_EXE_ABS) $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM) -intel) -o $(_MTB_RECIPE__APP_HEX_FILE) -intel --Output_Block_Size 16
 
-#
-# Paths construction helper macroses
-#
+# always regenerate the hex file in case the build dir or config changes
+.PHONY: $(_MTB_RECIPE__APP_HEX_FILE)
 
-#
-# Get unquoted path with escaped spaces
-# $(1) : path for which quotes and escapes should be removed but spaces should be escaped
-#
-CY_MACRO_GET_PATH_W_ESCAPED_SPACES=$(subst ",,$(subst $(CY_SPACE),\$(CY_SPACE),$(subst \,,$(1))))
-
-#
-# Get unquoted path without escaped symbols
-# $(1) : path for which quotes and escapes should be removed
-#
-CY_MACRO_GET_RAW_PATH=$(subst ",,$(subst \,,$(1)))
-
+endif #($(MTB_APPLICATION_SUBPROJECTS),)
+endif #($(MTB_TYPE),PROJECT)
+endif #($(LIBNAME),)
 
 ################################################################################
 # Memory Consumption
 ################################################################################
 
-CY_RECIPE_READELF=$(CY_INTERNAL_TOOL_arm-none-eabi-readelf_EXE)
-
 ifeq ($(TOOLCHAIN),A_Clang)
-CY_GEN_READELF=
-CY_MEMORY_CALC=
+_MTB_RECIPE__GEN_READELF=
+_MTB_RECIPE__MEMORY_CAL=
 else
-CY_GEN_READELF=$(CY_RECIPE_READELF) -Sl $(CY_CONFIG_DIR)/$(APPNAME).$(CY_TOOLCHAIN_SUFFIX_TARGET) > $(CY_CONFIG_DIR)/$(APPNAME).readelf
-CY_MEM_CALC=\
+_MTB_RECIPE__GEN_READELF=$(MTB_TOOLCHAIN_GCC_ARM__READELF) -Sl $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) > $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).readelf
+_MTB_RECIPE__MEM_CALC=\
 	bash --norc --noprofile\
-	$(CY_BASELIB_CORE_PATH)/make/scripts/memcalc.bash\
-	$(CY_CONFIG_DIR)/$(APPNAME).readelf\
-	$(CY_MEMORY_FLASH)\
-	$(CY_MEMORY_SRAM)\
-	$(CY_START_FLASH)\
-	$(CY_START_SRAM)
+	$(MTB_TOOLS__CORE_DIR)/make/scripts/memcalc.bash\
+	$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).readelf\
+	$(_MTB_RECIPE__DEVICE_FLASH_KB)\
+	$(_MTB_RECIPE__START_FLASH)
 endif
 
 memcalc:
 ifeq ($(LIBNAME),)
-	$(CY_NOISE)echo Calculating memory consumption: $(DEVICE) $(TOOLCHAIN) $(CY_TOOLCHAIN_OPTIMIZATION)
-	$(CY_NOISE)echo
-	$(CY_NOISE)$(CY_GEN_READELF)
-	$(CY_NOISE)$(CY_MEM_CALC)
-	$(CY_NOISE)echo
+	$(MTB__NOISE)echo Calculating memory consumption: $(DEVICE) $(TOOLCHAIN) $(MTB_TOOLCHAIN_OPTIMIZATION)
+	$(MTB__NOISE)echo
+	$(MTB__NOISE)$(_MTB_RECIPE__GEN_READELF)
+	$(MTB__NOISE)$(_MTB_RECIPE__MEM_CALC)
+	$(MTB__NOISE)echo
 endif
 
 #
 # Identify the phony targets
 #
-.PHONY: memcalc
+.PHONY: recipe_postbuild application_postbuild memcalc

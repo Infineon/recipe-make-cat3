@@ -15,9 +15,8 @@ To list the build options, run the "help" target by typing "make help" in CLI. F
 
 ## More information
 * [Recipe-make-cat3 Release Notes](./RELEASE.md)
-* [Cypress Semiconductor, an Infineon Technologies Company](http://www.cypress.com)
-* [Cypress Semiconductor GitHub](https://github.com/cypresssemiconductorco)
-* [ModusToolbox](https://www.cypress.com/products/modustoolbox-software-environment)
+* [Infineon GitHub](https://github.com/Infineon)
+* [ModusToolbox](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software)
 
 ---
-© Cypress Semiconductor Corporation, 2019-2021.
+© Cypress Semiconductor Corporation, 2019-2022.
