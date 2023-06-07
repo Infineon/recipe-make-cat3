@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2021 Cypress Semiconductor Corporation
+# Copyright 2018-2023 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,6 +76,9 @@ mtb_toolchain_ARM__elf2bin=$(MTB_TOOLCHAIN_ARM__ELF2BIN) --output $2 --bin $1
 ifeq ($(CONFIG),Debug)
 _MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DDEBUG=DEBUG
 _MTB_TOOLCHAIN_ARM__OPTIMIZATION:=-O1
+ifneq (,$(filter -fomit-frame-pointer,$(CFLAGS) $(CXXFLAGS)))
+_MTB_TOOLCHAIN_ARM__OPTIMIZATION+=-fno-omit-frame-pointer
+endif
 else
 ifeq ($(CONFIG),Release)
 _MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DNDEBUG
@@ -94,7 +97,7 @@ ifeq ($(MTB_RECIPE__CORE),CM0)
 # Arm Cortex-M0 CPU
 _MTB_TOOLCHAIN_ARM__CFLAGS_CORE:=-mcpu=cortex-m0
 _MTB_TOOLCHAIN_ARM__FLAGS_CORE:=--cpu=Cortex-M0
-_MTB_TOOLCHAIN_ARM__VFP_FLAGS0:=
+_MTB_TOOLCHAIN_ARM__VFP_FLAGS:=
 endif
 
 ifeq ($(MTB_RECIPE__CORE),CM0P)
@@ -191,3 +194,5 @@ MTB_TOOLCHAIN_ARM__INCLUDES:=
 
 # Additional libraries in the link process based on this toolchain
 MTB_TOOLCHAIN_ARM__DEFINES:=$(_MTB_TOOLCHAIN_ARM__DEBUG_FLAG)
+
+MTB_TOOLCHAIN_ARM__VSCODE_INTELLISENSE_MODE:=clang-arm

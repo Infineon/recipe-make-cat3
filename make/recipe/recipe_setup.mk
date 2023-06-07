@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2021 Cypress Semiconductor Corporation
+# Copyright 2018-2023 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,7 @@ ifeq ($(MTB_RECIPE__LINKER_SCRIPT),)
 ifneq ($(wildcard $(call mtb_core__escaped_path,$(_MTB_RECIPE__LINKER_SCRIPT_USER))),)
 MTB_RECIPE__LINKER_SCRIPT:=$(_MTB_RECIPE__LINKER_SCRIPT_USER)
 else
-$(call mtb_error,Unable to find linker script '$(LINKER_SCRIPT)'.)
+$(call mtb__error,Unable to find linker script '$(LINKER_SCRIPT)'.)
 endif
 endif # ($(_MTB_RECIPE__LINKER_SCRIPT_USER),)
 endif # ($(LINKER_SCRIPT),)
@@ -75,7 +75,7 @@ ifeq ($(MTB_RECIPE__LINKER_SCRIPT),)
 ifneq ($(wildcard $(call mtb_core__escaped_path,$(_MTB_RECIPE__LINKER_SCRIPT_BSP))),)
 MTB_RECIPE__LINKER_SCRIPT:=$(_MTB_RECIPE__LINKER_SCRIPT_BSP)
 else
-$(call mtb_error,Unable to find linker script '$(MTB_BSP__LINKER_SCRIPT)'.)
+$(call mtb__error,Unable to find linker script '$(MTB_BSP__LINKER_SCRIPT)'.)
 endif
 endif # ($(_MTB_RECIPE__LINKER_SCRIPT_BSP),)
 endif # ($(MTB_BSP__LINKER_SCRIPT),)
@@ -104,7 +104,7 @@ endif
 endif
 
 ifeq ($(wildcard $(call mtb_core__escaped_path,$(MTB_RECIPE__LINKER_SCRIPT))),)
-$(call mtb_error,Unable to find linker.$(MTB_RECIPE__SUFFIX_LS) in $(_MTB_RECIPE__LINKER_SCRIPT_MC1)$(MTB__COMMA) $(_MTB_RECIPE__LINKER_SCRIPT_MC2)$(MTB__COMMA) or $(_MTB_RECIPE__LINKER_SCRIPT_SC).)
+$(call mtb__error,Unable to find linker.$(MTB_RECIPE__SUFFIX_LS) in $(_MTB_RECIPE__LINKER_SCRIPT_MC1)$(MTB__COMMA) $(_MTB_RECIPE__LINKER_SCRIPT_MC2)$(MTB__COMMA) or $(_MTB_RECIPE__LINKER_SCRIPT_SC).)
 endif
 
 ifeq ($(TOOLCHAIN),A_Clang)
@@ -113,11 +113,11 @@ endif
 
 
 # Compiler, assember, linker, etc. arguments.
-MTB_RECIPE__CFLAGS:=$(CFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__CFLAGS)
-MTB_RECIPE__CXXFLAGS:=$(CXXFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__CXXFLAGS)
-MTB_RECIPE__ASFLAGS:=$(ASFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__ASFLAGS)
-MTB_RECIPE__ARFLAGS:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__ARFLAGS)
-MTB_RECIPE__LDFLAGS:=$(LDFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__LDFLAGS)
+MTB_RECIPE__CFLAGS=$(CFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__CFLAGS)
+MTB_RECIPE__CXXFLAGS=$(CXXFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__CXXFLAGS)
+MTB_RECIPE__ASFLAGS=$(ASFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__ASFLAGS)
+MTB_RECIPE__ARFLAGS=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__ARFLAGS)
+MTB_RECIPE__LDFLAGS=$(LDFLAGS) $(MTB_TOOLCHAIN_$(TOOLCHAIN)__LDFLAGS)
 
 ifneq ($(TOOLCHAIN),A_Clang)
 MTB_RECIPE__LDFLAGS+=$(MTB_RECIPE__LSFLAGS)"$(MTB_RECIPE__LINKER_SCRIPT)"
@@ -150,3 +150,5 @@ MTB_RECIPE__EXPLICIT_DEPENDENCIES=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__EXPLICIT_DEPENDE
 
 MTB_RECIPE__TOOLCHAIN_INCLUDES:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__INCLUDES)
 MTB_RECIPE__TOOLCHAIN_DEFINES:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__DEFINES)
+
+MTB_RECIPE__TOOLCHAIN_VSCODE_INTELLISENSE_MODE:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__VSCODE_INTELLISENSE_MODE)

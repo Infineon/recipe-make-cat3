@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2021 Cypress Semiconductor Corporation
+# Copyright 2018-2023 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,22 @@
 
 ifeq ($(WHICHFILE),true)
 $(info Processing $(lastword $(MAKEFILE_LIST)))
+endif
+
+# Determine programming interface. Use BSP_PROGRAM_INTERFACE if it is set,
+# otherwise use the default one
+_MTB_RECIPE__DEFAULT_PROGRAM_INTERFACE?=KitProg3
+ifeq (,$(BSP_PROGRAM_INTERFACE))
+_MTB_RECIPE__PROGRAM_INTERFACE_SUBDIR:=$(_MTB_RECIPE__DEFAULT_PROGRAM_INTERFACE)
+else
+_MTB_RECIPE__PROGRAM_INTERFACE_SUBDIR:=$(BSP_PROGRAM_INTERFACE)
+endif
+
+# debug interface validation
+debug_interface_check:
+ifeq ($(filter $(_MTB_RECIPE__PROGRAM_INTERFACE_SUBDIR), $(_MTB_RECIPE__PROGRAM_INTERFACE_SUPPORTED)),)
+	$(error "$(_MTB_RECIPE__PROGRAM_INTERFACE_SUBDIR)" interface is not supported for this device. \
+	Supported interfaces are "$(_MTB_RECIPE__PROGRAM_INTERFACE_SUPPORTED)")
 endif
 
 ################################################################################
@@ -48,9 +64,11 @@ _MTB_RECIPE__PROJECT_DIR_NAME=$(notdir $(realpath $(MTB_TOOLS__PRJ_DIR)))
 ifeq ($(_MTB_RECIPE__CONFIG_MODUS_FILE),)
 _MTB_RECIPE__CONFIG_MODUS_OUTPUT=
 _MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION_WITH_FLAG=
 else
 _MTB_RECIPE__CONFIG_MODUS_OUTPUT=$(call mtb__get_dir,$(_MTB_RECIPE__CONFIG_MODUS_FILE))/GeneratedSource
 _MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=-s &quot;$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)&quot;&\#13;&\#10;
+_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION_WITH_FLAG=-s &quot;$(patsubst $(call mtb_path_normalize,$(MTB_TOOLS__PRJ_DIR)/..)/%,%,$(call mtb_path_normalize,$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)))&quot;&\#13;&\#10;
 endif
 _MTB_RECIPE__OPENOCD_QSPI_CFG_PATH=$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)
 _MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION=$(patsubst $(call mtb_path_normalize,$(MTB_TOOLS__PRJ_DIR)/..)/%,%,$(call mtb_path_normalize,$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)))
@@ -138,48 +156,64 @@ recipe_prebuild:
 #
 ifeq ($(LIBNAME),)
 
-recipe_postbuild: $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+_MTB_RECIPE__PROG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+_MTB_RECIPE__TARG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
 
-$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+recipe_postbuild: $(_MTB_RECIPE__PROG_FILE)
+
+$(_MTB_RECIPE__PROG_FILE): $(_MTB_RECIPE__TARG_FILE)
 ifeq ($(TOOLCHAIN),A_Clang)
 	$(_MTB_RECIPE__ACLANG_POSTBUILD)
 endif
 ifeq ($(TOOLCHAIN),ARM)
-	$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/fromelf --output $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) --i32combined $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
+	$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/fromelf --output $(_MTB_RECIPE__PROG_FILE) --i32combined $(_MTB_RECIPE__TARG_FILE)
 endif
 ifeq ($(TOOLCHAIN),IAR)
-	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PROG_FILE)
 endif
 ifeq ($(TOOLCHAIN),GCC_ARM)
-	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PROG_FILE)
 endif
 
 ifeq ($(MTB_TYPE),PROJECT)
+# There are 2 dependencies on this file.
+# The first is from build_proj and qbuild_proj. In ths case, we are promoting. We add project_postbuild as a dependency becase that could modify the hex file.
+# The second is when generating the combined hex file or fist stage build. In this case, we are not promoting and cannot depend on project_postbuild as that is only defined in second stage.
 ifeq ($(MTB_APPLICATION_PROMOTE),true)
-recipe_postbuild: $(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+ifneq ($(CY_SECONDSTAGE),)
+build_proj qbuild_proj: $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM): project_postbuild
+endif
 endif
 
-# Copy project-specific program image to the application directory
-$(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+$(_MTB_RECIPE__PRJ_HEX_DIR):
 	$(MTB__NOISE)mkdir -p $(_MTB_RECIPE__PRJ_HEX_DIR)
-	cp $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 
-# always regenerate the hex file in case the build dir or config changes
-.PHONY: $(_MTB_RECIPE__PRJ_HEX_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
+.PHONY:$(_MTB_RECIPE__PRJ_HEX_DIR)
+
+$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM).d: $(_MTB_RECIPE__PRJ_HEX_DIR)
+	$(MTB__NOISE)echo $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) > $@.tmp
+	$(MTB__NOISE)if ! cmp -s "$@" "$@.tmp"; then \
+		mv -f "$@.tmp" "$@" ; \
+	else \
+		rm -f "$@.tmp"; \
+	fi
+
+# Copy project-specific program image to the application directory
+$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM).d
+	$(MTB__NOISE)cp -rf $< $@
 
 ifneq ($(MTB_APPLICATION_SUBPROJECTS),)
 # Multi-core application build/qbuild targets run application_postbuild
 # for the first project in the MTB_PROJECTS list
 application_postbuild: $(_MTB_RECIPE__APP_HEX_FILE)
 
-$(_MTB_RECIPE__APP_HEX_FILE): $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM))
+$(_MTB_RECIPE__APP_HEX_FILE): $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM).d)
 ifeq ($(CY_TOOL_srec_cat_EXE_ABS),)
 	$(call mtb__error,Unable to proceed. srec_cat executable not found)
 endif
-	$(CY_TOOL_srec_cat_EXE_ABS) $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM) -intel) -o $(_MTB_RECIPE__APP_HEX_FILE) -intel --Output_Block_Size 16
-
-# always regenerate the hex file in case the build dir or config changes
-.PHONY: $(_MTB_RECIPE__APP_HEX_FILE)
+	$(info Generating combined hex file: $(_MTB_RECIPE__APP_HEX_FILE))
+	$(MTB__NOISE)$(CY_TOOL_srec_cat_EXE_ABS) $(foreach project,$(MTB_APPLICATION_SUBPROJECTS),$(_MTB_RECIPE__PRJ_HEX_DIR)/$(project).$(MTB_RECIPE__SUFFIX_PROGRAM) -intel) -o $(_MTB_RECIPE__APP_HEX_FILE) -intel --Output_Block_Size 16
 
 endif #($(MTB_APPLICATION_SUBPROJECTS),)
 endif #($(MTB_TYPE),PROJECT)
@@ -193,7 +227,7 @@ ifeq ($(TOOLCHAIN),A_Clang)
 _MTB_RECIPE__GEN_READELF=
 _MTB_RECIPE__MEMORY_CAL=
 else
-_MTB_RECIPE__GEN_READELF=$(MTB_TOOLCHAIN_GCC_ARM__READELF) -Sl $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET) > $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).readelf
+_MTB_RECIPE__GEN_READELF=$(MTB_TOOLCHAIN_GCC_ARM__READELF) -Sl $(_MTB_RECIPE__TARG_FILE) > $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).readelf
 _MTB_RECIPE__MEM_CALC=\
 	bash --norc --noprofile\
 	$(MTB_TOOLS__CORE_DIR)/make/scripts/memcalc.bash\

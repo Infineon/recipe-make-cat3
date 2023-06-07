@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2021 Cypress Semiconductor Corporation
+# Copyright 2018-2023 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,8 +182,8 @@ MTB_TOOLCHAIN_IAR__ARFLAGS:=\
 	--verbose
 
 # Enable Multi-Threaded build arguments
-# Note: If these FreeRTOS-specific flags are modified, the instructions in ide.mk should be updated to reflect the changes.
-ifeq ($(filter FREERTOS,$(COMPONENTS)),FREERTOS)
+# Note: If these RTOS-specific flags are modified, the instructions in ide.mk should be updated to reflect the changes.
+ifneq (,$(filter MW_ABSTRACTION_RTOS,$(COMPONENTS)))
 MTB_TOOLCHAIN_IAR__CFLAGS  +=--dlib_config=full
 MTB_TOOLCHAIN_IAR__CXXFLAGS+=--dlib_config=full
 MTB_TOOLCHAIN_IAR__LDFLAGS +=--threaded_lib
@@ -224,3 +224,7 @@ MTB_TOOLCHAIN_IAR__INCLUDES:=
 
 # Additional libraries in the link process based on this toolchain
 MTB_TOOLCHAIN_IAR__DEFINES:=$(_MTB_TOOLCHAIN_IAR__DEBUG_FLAG)
+
+# https://github.com/microsoft/vscode-cmake-tools/issues/1096
+# vsocde c/c++ pluggin current does not suppot IAR intellisense mode. Use gcc-arm for now.
+MTB_TOOLCHAIN_IAR__VSCODE_INTELLISENSE_MODE:=gcc-arm
