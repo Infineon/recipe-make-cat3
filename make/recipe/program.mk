@@ -38,10 +38,11 @@ _MTB_RECIPE__GDB_SERVER_COMMAND:="$(MTB_CORE__JLINK_GDB_EXE)" $(_MTB_RECIPE__JLI
 _MTB_RECIPE__JLink_COMMANDER_ARGS:=-AutoConnect 1 -ExitOnError 1 -NoGui 1 -Device $(DEVICE) -If SWD -Speed 4000
 _MTB_RECIPE__JLink_PROGRAM_COMMAND:="$(MTB_CORE__JLINK_EXE)" $(_MTB_RECIPE__JLink_COMMANDER_ARGS) -CommandFile $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/program.jlink
 _MTB_RECIPE__JLink_ERASE_COMMAND:="$(MTB_CORE__JLINK_EXE)" $(_MTB_RECIPE__JLink_COMMANDER_ARGS) -CommandFile $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/erase.jlink
+_MTB_RECIPE__JLink_PROGRAM_IMG:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
 
 # Generate command files required by JLink tool for programming/erasing
 jlink_generate:
-	sed "s|&&PROG_FILE&&|$(_MTB_RECIPE__OPENOCD_PROGRAM_IMG)|g;" $(MTB_TOOLS__RECIPE_DIR)/make/scripts/program.jlink > $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/program.jlink
+	sed "s|&&PROG_FILE&&|$(_MTB_RECIPE__JLink_PROGRAM_IMG)|g;" $(MTB_TOOLS__RECIPE_DIR)/make/scripts/program.jlink > $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/program.jlink
 	cp $(MTB_TOOLS__RECIPE_DIR)/make/scripts/erase.jlink $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/erase.jlink
 
 program: build qprogram
@@ -52,7 +53,7 @@ erase_JLink: jlink_generate
 #
 # only program if it is not a lib project, and if not DIRECT_LOAD
 #
-qprogram:
+qprogram: program_JLink
 ifeq ($(LIBNAME),)
 	$(MTB__NOISE)echo;\
 	echo "Programming target device ... "
@@ -87,7 +88,7 @@ attach:
 	echo "DBG: $(MTB_TOOLCHAIN_GCC_ARM__GDB) $(_MTB_RECIPE__SYMBOL_IMG) -x $(_MTB_RECIPE__GDB_ARGS)";\
 	$(MTB_TOOLCHAIN_GCC_ARM__GDB) $(_MTB_RECIPE__SYMBOL_IMG) -x $(_MTB_RECIPE__GDB_ARGS)
 
-erase:
+erase: erase_JLink
 	$(MTB__NOISE)echo;\
 	echo "Erasing target device ... ";\
 	$(_MTB_RECIPE__JLink_ERASE_COMMAND)
