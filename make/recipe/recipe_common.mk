@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2023 Cypress Semiconductor Corporation
+# Copyright 2018-2024 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -159,6 +159,11 @@ ifeq ($(LIBNAME),)
 _MTB_RECIPE__PROG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 _MTB_RECIPE__TARG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
 
+_MTB_RECIPE__PROG_FILE_USER=$(_MTB_RECIPE__PROG_FILE)
+ifneq ($(PROG_FILE),)
+_MTB_RECIPE__PROG_FILE_USER=$(PROG_FILE)
+endif
+
 recipe_postbuild: $(_MTB_RECIPE__PROG_FILE)
 
 $(_MTB_RECIPE__PROG_FILE): $(_MTB_RECIPE__TARG_FILE)
@@ -192,7 +197,7 @@ $(_MTB_RECIPE__PRJ_HEX_DIR):
 .PHONY:$(_MTB_RECIPE__PRJ_HEX_DIR)
 
 $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM).d: $(_MTB_RECIPE__PRJ_HEX_DIR)
-	$(MTB__NOISE)echo $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) > $@.tmp
+	$(MTB__NOISE)echo $(_MTB_RECIPE__PROG_FILE_USER) > $@.tmp
 	$(MTB__NOISE)if ! cmp -s "$@" "$@.tmp"; then \
 		mv -f "$@.tmp" "$@" ; \
 	else \
@@ -200,8 +205,8 @@ $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFI
 	fi
 
 # Copy project-specific program image to the application directory
-$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_PROGRAM) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM).d
-	$(MTB__NOISE)cp -rf $< $@
+$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM).d
+	$(MTB__NOISE)cp -rf $(_MTB_RECIPE__PROG_FILE_USER) $@
 
 ifneq ($(MTB_APPLICATION_SUBPROJECTS),)
 # Multi-core application build/qbuild targets run application_postbuild

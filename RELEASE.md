@@ -13,7 +13,10 @@ This release of the XMC GNU make build recipe includes support for building XMC 
     * ARM Compiler 6
 
 ### What Changed?
-#### v2.1.1.
+#### v2.2.0
+* Improved stability and bug fixes.
+
+#### v2.1.1
 * Minor updates to IDE export.
 
 #### v2.0.0
@@ -55,5 +58,5 @@ Minimum required ModusToolbox Software Environment: v3.0
 * [ModusToolbox](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software)
 
 ---
-© Cypress Semiconductor Corporation, 2019-2023.
+© Cypress Semiconductor Corporation, 2019-2024.
 
