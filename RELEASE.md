@@ -13,6 +13,9 @@ This release of the XMC GNU make build recipe includes support for building XMC 
     * ARM Compiler 6
 
 ### What Changed?
+#### v2.2.1
+* Added support for XMC4402.
+
 #### v2.2.0
 * Improved stability and bug fixes.
 

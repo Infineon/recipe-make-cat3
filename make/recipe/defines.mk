@@ -82,7 +82,7 @@ _MTB_RECIPE__XMC_ARCH:=XMC4
 _MTB_RECIPE__OPENOCD_CHIP_NAME:=xmc4300
 _MTB_RECIPE__XMC_SERIES:=XMC4300
 
-else ifeq (XMC4400,$(_MTB_RECIPE__DEVICE_DIE))
+else ifneq (,$(findstring $(_MTB_RECIPE__DEVICE_DIE),XMC4400 XMC4402))
 _MTB_RECIPE__XMC_ARCH:=XMC4
 _MTB_RECIPE__OPENOCD_CHIP_NAME:=xmc4400
 _MTB_RECIPE__XMC_SERIES:=XMC4400
@@ -103,7 +103,7 @@ _MTB_RECIPE__OPENOCD_CHIP_NAME:=xmc4800
 _MTB_RECIPE__XMC_SERIES:=XMC4800
 
 else
-$(call mtb__error,Incorrect part number $(DEVICE). Check DEVICE variable.)
+$(call mtb__error,Incorrect part number $(DEVICE) or device die. Check DEVICE and DEVICE_$(DEVICE)_DIE variables.)
 endif
 
 #
