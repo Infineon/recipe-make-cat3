@@ -6,7 +6,8 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2024 Cypress Semiconductor Corporation
+# (c) 2018-2024, Cypress Semiconductor Corporation (an Infineon company) or
+# an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,18 +45,3 @@ endif
 _MTB_RECIPE__DEVICE_DIE:=$(DEVICE_$(DEVICE)_DIE)
 
 _MTB_RECIPE__DEVICE_FLASH_KB:=$(DEVICE_$(DEVICE)_FLASH_KB)
-
-################################################################################
-# Paths
-################################################################################
-
-ifeq ($(MTB_TYPE),PROJECT)
-# Application build output is one level up relative to the project directory
-_MTB_RECIPE__APP_HEX_DIR:=../build
-_MTB_RECIPE__PRJ_HEX_DIR:=$(_MTB_RECIPE__APP_HEX_DIR)/project_hex
-
-# Override the hex path for qprogram_proj target
-ifneq ($(MTB_APPLICATION_SUBPROJECTS),)
-_MTB_RECIPE__APP_HEX_FILE:=$(call mtb__path_normalize,$(_MTB_RECIPE__APP_HEX_DIR)/app_combined.$(MTB_RECIPE__SUFFIX_PROGRAM))
-endif
-endif

@@ -49,6 +49,15 @@ _MTB_TOOLCHAIN_IAR__UNESCAPED_BASE_DIR=$(CY_COMPILER_PATH)
 else
 MTB_TOOLCHAIN_IAR__BASE_DIR:=$(_MTB_TOOLCHAIN_IAR__DEFAULT)
 _MTB_TOOLCHAIN_IAR__UNESCAPED_BASE_DIR=$(_MTB_TOOLCHAIN_IAR__DEFAULT)
+ifeq ($(CY_SECONDSTAGE),)
+ifneq ($(filter $(MAKECMDGOALS), build build_proj qbuild qbuild_proj all program program_proj ewarm ewarm8),)
+$(info Note: The CY_COMPILER_IAR_DIR is not set. The default path of the IAR toolchain is $(_MTB_TOOLCHAIN_IAR__DEFAULT).\
+If it is not correct, set the CY_COMPILER_IAR_DIR variable to the location of the IAR toolchain directory.)
+$(info Note: The feature of setting the default location of the IAR toolchain has been deprecated.\
+It will be removed in the next minor release. Set the CY_COMPILER_IAR_DIR variable to the location\
+of the IAR toolchain directory.)
+endif
+endif
 endif
 endif
 
@@ -89,7 +98,7 @@ _MTB_TOOLCHAIN_IAR__OPTIMIZATION:=-Ol
 else
 ifeq ($(CONFIG),Release)
 _MTB_TOOLCHAIN_IAR__DEBUG_FLAG:=-DNDEBUG
-_MTB_TOOLCHAIN_IAR__OPTIMIZATION:=-Ohs
+_MTB_TOOLCHAIN_IAR__OPTIMIZATION:=-Ohz
 else
 _MTB_TOOLCHAIN_IAR__DEBUG_FLAG:=
 _MTB_TOOLCHAIN_IAR__OPTIMIZATION:=
@@ -145,7 +154,8 @@ MTB_TOOLCHAIN_IAR__CFLAGS:=\
 	--endian=little\
 	-e\
 	--enable_restrict\
-	--no_wrap_diagnostics
+	--no_wrap_diagnostics\
+	--no_dwarf4
 
 ifeq ($(CONFIG),Debug)
 MTB_TOOLCHAIN_IAR__CFLAGS+=--debug
@@ -228,3 +238,4 @@ MTB_TOOLCHAIN_IAR__DEFINES:=$(_MTB_TOOLCHAIN_IAR__DEBUG_FLAG)
 # https://github.com/microsoft/vscode-cmake-tools/issues/1096
 # vsocde c/c++ pluggin current does not suppot IAR intellisense mode. Use gcc-arm for now.
 MTB_TOOLCHAIN_IAR__VSCODE_INTELLISENSE_MODE:=gcc-arm
+MTB_TOOLCHAIN_IAR__VSCODE_PROBLEM_MATCHER:=iar

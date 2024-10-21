@@ -6,7 +6,8 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2024 Cypress Semiconductor Corporation
+# (c) 2018-2024, Cypress Semiconductor Corporation (an Infineon company) or
+# an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +34,7 @@ MTB_RECIPE__SUFFIX_CC :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_CC)
 MTB_RECIPE__SUFFIX_HPP:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_HPP)
 MTB_RECIPE__SUFFIX_O  :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_O)
 MTB_RECIPE__SUFFIX_A  :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_A)
+MTB_RECIPE__SUFFIX_AR :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_AR)
 MTB_RECIPE__SUFFIX_D  :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_D)
 MTB_RECIPE__SUFFIX_LS :=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_LS)
 MTB_RECIPE__SUFFIX_MAP:=$(MTB_TOOLCHAIN_$(TOOLCHAIN)__SUFFIX_MAP)

@@ -1,5 +1,5 @@
 # XMC GNU make Build System Release Notes
-This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through the Eclipse IDE for ModusToolbox.
+This repo provides the build recipe make files and scripts for building and programming XMC applications. Builds can be run either through a command-line interface (CLI) or through a supported IDE such as Eclipse or VS Code.
 
 ### What's Included?
 This release of the XMC GNU make build recipe includes support for building XMC application projects. It is expected that a code example contains a top level make file for itself and references a Board Support Package (BSP) that defines specific items, like the XMC part, for the target board. Supported functionality includes the following:
@@ -13,6 +13,13 @@ This release of the XMC GNU make build recipe includes support for building XMC 
     * ARM Compiler 6
 
 ### What Changed?
+#### v2.3.0
+* Optimization for speed changed to optimization for size for the IAR toolchain.
+* The feature of setting the default location of the ARM and IAR toolchains has been deprecated.
+* Added support for Infineon EdgeProtectTool.
+* Added a "last_config" build configuration directory that contains the hex file and elf file from last build.
+* VS Code and Eclipse launch configurations now use "last_config" directory. Launch configurations no longer have to be re-generated when switching between "Debug" and "Release".
+
 #### v2.2.1
 * Added support for XMC4402.
 
@@ -49,7 +56,7 @@ This version of the XMC build system was validated for compatibility with the fo
 
 | Software and Tools                        | Version |
 | :---                                      | :----:  |
-| ModusToolbox Software Environment         | 3.1     |
+| ModusToolbox Software Environment         | 3.3     |
 | GCC Compiler                              | 11.3    |
 | IAR Compiler                              | 9.3     |
 | ARM Compiler                              | 6.16    |
@@ -61,5 +68,5 @@ Minimum required ModusToolbox Software Environment: v3.0
 * [ModusToolbox](https://www.infineon.com/cms/en/design-support/tools/sdk/modustoolbox-software)
 
 ---
-© Cypress Semiconductor Corporation, 2019-2024.
+(c) 2019-2024, Cypress Semiconductor Corporation (an Infineon company) or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 
