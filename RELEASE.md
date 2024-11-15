@@ -13,6 +13,9 @@ This release of the XMC GNU make build recipe includes support for building XMC 
     * ARM Compiler 6
 
 ### What Changed?
+#### v2.3.1
+* Fixed a postbuild dependency that could cause memcalc to fail.
+
 #### v2.3.0
 * Optimization for speed changed to optimization for size for the IAR toolchain.
 * The feature of setting the default location of the ARM and IAR toolchains has been deprecated.
