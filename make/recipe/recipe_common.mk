@@ -72,37 +72,7 @@ _MTB_RECIPE__APP_HEX_FILE:=$(call mtb__path_normalize,$(_MTB_RECIPE__APP_HEX_DIR
 endif
 endif
 
-################################################################################
-# QSPI programming flags
-################################################################################
-
-ifneq ($(CY_SECONDSTAGE),)
-
-_MTB_RECIPE__QUERY_EVAL_CONFIG_FILE=$(MTB_TOOLS__OUTPUT_BASE_DIR)/mtbquery-eval-config.mk
-# get the path of design.modus file
-_MTB_RECIPE__CONFIG_MODUS_FILE:=$(filter %.modus,$(CY_SEARCH_ALL_FILES))
-
-ifneq ($(words $(_MTB_RECIPE__CONFIG_MODUS_FILE)),1)
-ifneq ($(words $(_MTB_RECIPE__CONFIG_MODUS_FILE)),0)
-$(warning Multiple .modus files found: $(_MTB_RECIPE__CONFIG_MODUS_FILE) -- using the first.)
- _MTB_RECIPE__CONFIG_MODUS_FILE:=$(word 1,$(_MTB_RECIPE__CONFIG_MODUS_FILE))
-endif
-endif
-
-_MTB_RECIPE__PROJECT_DIR_NAME=$(notdir $(realpath $(MTB_TOOLS__PRJ_DIR)))
-
-ifeq ($(_MTB_RECIPE__CONFIG_MODUS_FILE),)
-_MTB_RECIPE__CONFIG_MODUS_OUTPUT=
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION_WITH_FLAG=
-else
-_MTB_RECIPE__CONFIG_MODUS_OUTPUT=$(call mtb__get_dir,$(_MTB_RECIPE__CONFIG_MODUS_FILE))/GeneratedSource
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_WITH_FLAG=-s &quot;$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)&quot;&\#13;&\#10;
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION_WITH_FLAG=-s &quot;$(patsubst $(call mtb_path_normalize,$(MTB_TOOLS__PRJ_DIR)/..)/%,%,$(call mtb_path_normalize,$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)))&quot;&\#13;&\#10;
-endif
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH=$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)
-_MTB_RECIPE__OPENOCD_QSPI_CFG_PATH_APPLICATION=$(patsubst $(call mtb_path_normalize,$(MTB_TOOLS__PRJ_DIR)/..)/%,%,$(call mtb_path_normalize,$(_MTB_RECIPE__CONFIG_MODUS_OUTPUT)))
-endif
+_MTB_RECIPE__PROJECT_DIR_NAME:=$(notdir $(realpath $(MTB_TOOLS__PRJ_DIR)))
 
 ################################################################################
 # Compiler and linker arguments
@@ -132,7 +102,7 @@ MTB_RECIPE__DEFINES=$(sort \
 	$(_MTB_RECIPE__USER_NAME)\
 	-DTARGET_$(subst -,_,$(TARGET))\
 	-DCY_TARGET_BOARD=$(subst -,_,$(TARGET))\
-	$(addprefix -DCOMPONENT_,$(subst -,_,$(_MTB_RECIPE__COMPONENT_LIST)))\
+	$(addprefix -DCOMPONENT_,$(subst .,_,$(subst -,_,$(_MTB_RECIPE__COMPONENT_LIST))))\
 	$(MTB_RECIPE__TOOLCHAIN_DEFINES)\
 	-DCY_SUPPORTS_DEVICE_VALIDATION\
 	$(_MTB_RECIPE__CORE_NAME_DEFINES)\
@@ -198,8 +168,6 @@ endif
 # The second is when generating the combined hex file or fist stage build. In this case, we are not promoting and cannot depend on project_postbuild as that is only defined in second stage.
 _MTB_RECIPE__PROMOTE=false
 
-ifneq ($(CY_SECONDSTAGE),)
-
 MTB_RECIPE__LAST_CONFIG_DIR:=$(MTB_TOOLS__OUTPUT_BASE_DIR)/last_config
 $(MTB_RECIPE__LAST_CONFIG_DIR):|
 	$(MTB__NOISE)mkdir -p $(MTB_RECIPE__LAST_CONFIG_DIR)
@@ -218,9 +186,9 @@ $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D): | $(MTB_RECIPE__LAST_CONFIG_DIR)
 		rm -f "$@.tmp"; \
 	fi
 
-$(_MTB_RECIPE__LAST_CONFIG_PROG_FILE): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D) | project_postbuild
-	$(MTB__NOISE)cp -rf $(_MTB_RECIPE__PROG_FILE_USER) $@
-	$(MTB__NOISE)cp -rf $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__LAST_CONFIG_TARG_FILE)
+$(_MTB_RECIPE__LAST_CONFIG_PROG_FILE): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D) | mtb_conditional_postbuild
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE_USER) $@
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__LAST_CONFIG_TARG_FILE)
 
 ifeq ($(MTB_APPLICATION_PROMOTE),true)
 _MTB_RECIPE__PROMOTE=true
@@ -228,13 +196,12 @@ endif
 ifneq ($(COMBINE_SIGN_JSON),)
 _MTB_RECIPE__PROMOTE=true
 endif
-endif
 
 _MTB_RECIPE__COPIED_PROJECT_PROG_FILE=$(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_PROGRAM)
 
 ifeq ($(_MTB_RECIPE__PROMOTE),true)
 build_proj qbuild_proj: $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE) $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE)
-$(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE) : | project_postbuild
+$(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE) : | mtb_conditional_postbuild
 endif
 
 $(_MTB_RECIPE__PRJ_HEX_DIR):
@@ -251,9 +218,9 @@ $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE).d : | $(_MTB_RECIPE__PRJ_HEX_DIR)
 # Copy project-specific program image to the application directory
 # Conditionally copy the elf file so that it may be used as debugging symbols.
 $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE).d
-	$(MTB__NOISE)cp -rf $(_MTB_RECIPE__PROG_FILE_USER) $@
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE_USER) $@
 ifneq ($(COMBINE_SIGN_JSON),)
-	$(MTB__NOISE)cp -rf $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_TARGET)
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_TARGET)
 endif
 
 ifeq ($(COMBINE_SIGN_JSON),)
@@ -279,29 +246,24 @@ _MTB_RECIPE__COMBINE_SIGN_VERSION:=$(lastword $(filter $(CY_TOOL_signcombinemkge
 _MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSON=$(_MTB_RECIPE__APPLICATION_RELATIVE)/$(COMBINE_SIGN_JSON)
 _MTB_RECIPE__COMBINE_SIGN_MK_FILE:=$(_MTB_RECIPE__APP_HEX_DIR)/$(notdir $(COMBINE_SIGN_JSON)).mk
 
-ifeq ($(CY_SECONDSTAGE),)
 $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE): $(_MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSON)
-	$(MTB__NOISE)$(CY_TOOL_signcombinemkgen_EXE_ABS) -i $(_MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSON) -o $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE) -v $(_MTB_RECIPE__COMBINE_SIGN_VERSION)
+	$(MTB__NOISE)$(CY_TOOL_signcombinemkgen_EXE_ABS) -i $(_MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSON) -o $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE).tmp -v $(_MTB_RECIPE__COMBINE_SIGN_VERSION)
+	$(MTB__NOISE)if ! cmp -s "$@" "$@.tmp"; then \
+		mv -f "$@.tmp" "$@" ; \
+	else \
+		rm -f "$@.tmp"; \
+	fi
 
 recipe_prebuild: $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE)
-endif
 
-# Need to do this ifneq check instead of -include because this is an intermediate make file and there is recipe to build it.
-# See https://www.gnu.org/software/make/manual/html_node/Remaking-Makefiles.html
-# If a -include is used, it could cause the makefile to get build even if we don't want to.
-# This causes problem with operations such as make clean that tries to both delete and create the file.
-ifneq ($(filter $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE),$(wildcard $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE))),)
 include $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE)
 # override the default app_combine.hex as the file being programmed.
 ifneq ($(MTB_COMBINE_SIGN_DEFAULT)$(MTB_COMBINE_SIGN_$(MTB_COMBINE_SIGN_DEFAULT)_HEX_PATH),)
 # Used the hex file from combiner-signer.json
 _MTB_RECIPE__APP_HEX_FILE:=$(call mtb__path_normalize,$(MTB_COMBINE_SIGN_$(MTB_COMBINE_SIGN_DEFAULT)_HEX_PATH))
 endif
-endif
 
-ifeq ($(CY_SECONDSTAGE),)
 application_postbuild: sign_combine
-else
 ifeq ($(MTB_TYPE),COMBINED)
 build_proj qbuild_proj: sign_combine
 endif
@@ -310,7 +272,6 @@ ifeq ($(MTB_APPLICATION_SUBPROJECTS),)
 build_proj qbuild_proj: sign_combine sign_combine_check_inputs
 sign_combine: sign_combine_check_inputs
 sign_combine_check_inputs : | $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE) $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE)
-endif
 endif
 
 endif #($(COMBINE_SIGN_JSON),)

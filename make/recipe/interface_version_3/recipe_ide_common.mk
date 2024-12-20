@@ -179,4 +179,6 @@ recipe_ide_combine_sign_text_replacement:
 	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_ECLIPSE_HEX_PATH&&=$${cy_prj_path}/$(MTB_COMBINE_SIGN_$(index)_HEX_PATH)))
 	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_VSCODE_HEX_PATH&&=$(MTB_COMBINE_SIGN_$(index)_HEX_PATH)))
 	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH&&=$(if $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),add-symbol-file $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),)))
+	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_VSCODE_EXTRA_ELF_PATH&&=$(if $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),"add-symbol-file $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH)",)))
+
 endif
