@@ -30,10 +30,18 @@ endif
 _MTB_RECIPE__IDE_PRJ_DIR_NAME:=$(notdir $(realpath $(MTB_TOOLS__PRJ_DIR)))
 
 
+ifeq ($(firstword $(MTB_APPLICATION_SUBPROJECTS)),$(_MTB_RECIPE__IDE_PRJ_DIR_NAME))
+_MTB_RECIPE__IS_FIRST_PRJ=1
+endif
+ifeq ($(lastword $(MTB_APPLICATION_SUBPROJECTS)),$(_MTB_RECIPE__IDE_PRJ_DIR_NAME))
+_MTB_RECIPE__IS_LAST_PRJ=1
+endif
+
 ##############################################
 # VSCode Eclipse
 ##############################################
-_MTB_RECIPE__IDE_TEMPLATE_DIR:=$(MTB_TOOLS__RECIPE_DIR)/make/scripts/interface_version_3
+_MTB_RECIPE__IDE_CORE_SCRIPT_DIR:=$(MTB_TOOLS__CORE_DIR)/make/scripts/$(_MTB_RECIPE__IDE_EXPORT_INTERFACE_VERSION)
+_MTB_RECIPE__IDE_TEMPLATE_DIR:=$(MTB_TOOLS__RECIPE_DIR)/make/scripts/$(_MTB_RECIPE__IDE_EXPORT_INTERFACE_VERSION)
 _MTB_RECIPE__IDE_BUILD_PATH_RELATIVE:=$(notdir $(MTB_TOOLS__OUTPUT_BASE_DIR))/last_config
 _MTB_RECIPE__IDE_BUILD_APPLICATION_PATH_RELATIVE:=$(notdir $(MTB_TOOLS__PRJ_DIR))/$(_MTB_RECIPE__IDE_BUILD_PATH_RELATIVE)
 _MTB_RECIPE__IDE_COMBINED_HEX_RELATIVE:=$(patsubst $(call mtb__path_normalize,$(MTB_TOOLS__PRJ_DIR)/../)/%,%,$(_MTB_RECIPE__APP_HEX_FILE))
@@ -53,8 +61,10 @@ endif
 _MTB_RECIPE__VSCODE_SVD_PATH:=$(DEVICE_$(DEVICE)_SVD)
 _MTB_RECIPE__VSCODE_APPLICATION_SVD_PATH=$(patsubst ../%,%,$(_MTB_RECIPE__VSCODE_SVD_PATH))
 
-vscode_generate: recipe_vscode_common_text_replacement_data_file
-vscode_generate: MTB_CORE__EXPORT_CMDLINE += -textdata $(_MTB_RECIPE__IDE_COMMON_TEXT_DATA_FILE)
+vscode_generate: recipe_vscode_common_text_replacement_data_file recipe_vscode_common_metadata_file
+vscode_generate: MTB_CORE__EXPORT_CMDLINE += -textdata $(_MTB_RECIPE__IDE_COMMON_TEXT_DATA_FILE) -metadata $(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE)
+
+_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/recipe_ide_vscode_common_meta.txt
 
 recipe_vscode_common_text_replacement_data_file:
 	$(call mtb__file_write,$(_MTB_RECIPE__IDE_COMMON_TEXT_DATA_FILE),&&_MTB_RECIPE__ELF_FILE&&=$(_MTB_RECIPE__VSCODE_ELF_FILE))
@@ -76,7 +86,28 @@ recipe_vscode_common_text_replacement_data_file:
 	$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMMON_TEXT_DATA_FILE),&&_MTB_RECIPE__VSCODE_OPENOCD_PROBE_SERIAL_CMD&&=$(_MTB_RECIPE__OPENOCD_PROBE_SERIAL))
 	$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMMON_TEXT_DATA_FILE),&&_MTB_RECIPE__PROBE_SERIAL&&=$(MTB_PROBE_SERIAL))
 
-.PHONY: recipe_vscode_common_text_replacement_data_file
+recipe_vscode_common_metadata_file:
+	$(call mtb__file_write,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),)
+ifneq (,$(_MTB_RECIPE__IS_MULTI_CORE_APPLICATION))
+ifneq (,$(_MTB_RECIPE__IS_FIRST_PRJ))
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_MULTI_CORE_APP_TASKS_JSON)=../.vscode/tasks.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_MULTI_CORE_APP_LAUNCH_JSON)=../.vscode/launch.json)
+else
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=../.vscode=../.vscode)
+endif
+endif
+ifeq ($(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),)
+ifneq (,$(_MTB_RECIPE__IS_MULTI_CORE_APPLICATION))
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_MULTI_CORE_PRJ_TASKS_JSON)=.vscode/tasks.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_MULTI_CORE_PRJ_LAUNCH_JSON)=.vscode/launch.json)
+else #(,$(_MTB_RECIPE__IS_MULTI_CORE_APPLICATION))
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_SINGLE_CORE_APP_TASKS_JSON)=.vscode/tasks.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_SINGLE_CORE_APP_LAUNCH_JSON)=.vscode/launch.json)
+endif #(,$(_MTB_RECIPE__IS_MULTI_CORE_APPLICATION))
+	$(call mtb__file_append,$(_MTB_RECIPE__IDE_VSCODE_COMMON_META_DATA_FILE),MERGE_LAUNCH_JSON=.vscode/launch.json=.vscode/launch.json)
+endif
+
+.PHONY: recipe_vscode_common_text_replacement_data_file recipe_vscode_common_metadata_file
 
 ##############################################
 # Eclipse
@@ -111,7 +142,11 @@ _MTB_RECIPE__ECLIPSE_GDB=$${cy_tools_path:CY_TOOL_arm-none-eabi-gdb_EXE}
 # to be provided. If one is not provided, we will fallback to the default APPNAME.
 ifeq ($(CY_IDE_PRJNAME),)
 CY_IDE_PRJNAME=$(APPNAME)
+ifeq ($(MTB_APPLICATION_NAME),)
+_MTB_RECIPE__ECLIPSE_APPLICATION_NAME:=$(APPNAME)
+else
 _MTB_RECIPE__ECLIPSE_APPLICATION_NAME:=$(patsubst "%",%,$(MTB_APPLICATION_NAME))
+endif
 else
 # in a multi-core application, CY_IDE_PRJNAME is name selected in the project-creator and should only apply to the project
 _MTB_RECIPE__ECLIPSE_APPLICATION_NAME:=$(CY_IDE_PRJNAME)
@@ -166,7 +201,7 @@ recipe_ewarm_dfp_data_file:
 # Combiner/Signer Integration
 ##############################################
 
-ifneq ($(COMBINE_SIGN_JSON),)
+ifneq ($(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),)
 _MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/recipe_ide_combine_sign_text_data.txt
 
 eclipse_generate vscode_generate: MTB_CORE__EXPORT_CMDLINE += -textdata $(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE)
@@ -181,4 +216,20 @@ recipe_ide_combine_sign_text_replacement:
 	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH&&=$(if $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),add-symbol-file $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),)))
 	$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),$(call mtb__file_append,$(_MTB_RECIPE__IDE_COMBINE_SIGN_TEXT_DATA_FILE),&&MTB_COMBINE_SIGN_$(index)_VSCODE_EXTRA_ELF_PATH&&=$(if $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH),"add-symbol-file $(MTB_COMBINE_SIGN_$(index)_EXTRA_ELF_PATH)",)))
 
-endif
+
+_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/vscode_combine_sign_meta_data.txt
+
+vscode_generate: MTB_CORE__EXPORT_CMDLINE += -metadata $(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE)
+vscode_generate: recipe_vscode_combine_sign_meta
+
+recipe_vscode_combine_sign_meta:
+	$(call mtb__file_write,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),)
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_CS_LAUNCH_JSON)=.vscode/launch_&&IDX&&.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),TEMPLATE_REPEAT=.vscode/launch_&&IDX&&.json=$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES))
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),MERGE_LAUNCH_JSON=.vscode/launch.json=$(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),.vscode/launch_$(index).json))
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__IDE_CORE_SCRIPT_DIR)/vscode/tasks_partial.json=.vscode/tasks_partial.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),TEMPLATE_REPLACE=$(_MTB_RECIPE__VSCODE_CS_TASKS_JSON)=.vscode/tasks_&&IDX&&.json)
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),TEMPLATE_REPEAT=.vscode/tasks_&&IDX&&.json=$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES))
+	$(call mtb__file_append,$(_MTB_RECIPE__VSCODE_COMBINE_SIGN_MEATA_DATA_FILE),MERGE_TASKS_JSON=.vscode/tasks.json=.vscode/tasks_partial.json $(foreach index,$(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),.vscode/tasks_$(index).json))
+
+endif #ifneq ($(MTB_COMBINE_SIGN_$(_MTB_RECIPE__IDE_PRJ_DIR_NAME)_HEX_FILES),)

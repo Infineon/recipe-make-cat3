@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# (c) 2018-2024, Cypress Semiconductor Corporation (an Infineon company) or
+# (c) 2018-2025, Cypress Semiconductor Corporation (an Infineon company) or
 # an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -139,11 +139,6 @@ ifeq ($(LIBNAME),)
 _MTB_RECIPE__PROG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME)$(_MTB_RECIPE__PROG_FILE_SUFFIX).$(MTB_RECIPE__SUFFIX_PROGRAM)
 _MTB_RECIPE__TARG_FILE:=$(MTB_TOOLS__OUTPUT_CONFIG_DIR)/$(APPNAME).$(MTB_RECIPE__SUFFIX_TARGET)
 
-_MTB_RECIPE__PROG_FILE_USER=$(_MTB_RECIPE__PROG_FILE)
-ifneq ($(PROG_FILE),)
-_MTB_RECIPE__PROG_FILE_USER=$(PROG_FILE)
-endif
-
 recipe_postbuild: $(_MTB_RECIPE__PROG_FILE)
 
 $(_MTB_RECIPE__PROG_FILE): $(_MTB_RECIPE__TARG_FILE)
@@ -160,7 +155,7 @@ ifeq ($(TOOLCHAIN),GCC_ARM)
 	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PROG_FILE)
 endif
 ifeq ($(TOOLCHAIN),LLVM_ARM)
-	$(MTB_TOOLCHAIN_LLVM_ARM__OBJCOPY) -O ihex $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PROG_FILE)
+	$(MTB_TOOLCHAIN_GCC_ARM__OBJCOPY) -O ihex $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PROG_FILE)
 endif
 
 # There are 2 dependencies on this file.
@@ -179,7 +174,7 @@ _MTB_RECIPE__LAST_CONFIG_PROG_FILE_D:=$(_MTB_RECIPE__LAST_CONFIG_PROG_FILE).d
 build_proj qbuild_proj: $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE)
 
 $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D): | $(MTB_RECIPE__LAST_CONFIG_DIR)
-	$(MTB__NOISE)echo $(_MTB_RECIPE__PROG_FILE_USER) > $@.tmp
+	$(MTB__NOISE)echo $(_MTB_RECIPE__PROG_FILE) > $@.tmp
 	$(MTB__NOISE)if ! cmp -s "$@" "$@.tmp"; then \
 		mv -f "$@.tmp" "$@" ; \
 	else \
@@ -187,7 +182,7 @@ $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D): | $(MTB_RECIPE__LAST_CONFIG_DIR)
 	fi
 
 $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__LAST_CONFIG_PROG_FILE_D) | mtb_conditional_postbuild
-	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE_USER) $@
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE) $@
 	$(MTB__NOISE)cp -f $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__LAST_CONFIG_TARG_FILE)
 
 ifeq ($(MTB_APPLICATION_PROMOTE),true)
@@ -208,7 +203,7 @@ $(_MTB_RECIPE__PRJ_HEX_DIR):
 	$(MTB__NOISE)mkdir -p $(_MTB_RECIPE__PRJ_HEX_DIR)
 
 $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE).d : | $(_MTB_RECIPE__PRJ_HEX_DIR)
-	$(MTB__NOISE)echo $(_MTB_RECIPE__PROG_FILE_USER) > $@.tmp
+	$(MTB__NOISE)echo $(_MTB_RECIPE__PROG_FILE) > $@.tmp
 	$(MTB__NOISE)if ! cmp -s "$@" "$@.tmp"; then \
 		mv -f "$@.tmp" "$@" ; \
 	else \
@@ -218,7 +213,7 @@ $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE).d : | $(_MTB_RECIPE__PRJ_HEX_DIR)
 # Copy project-specific program image to the application directory
 # Conditionally copy the elf file so that it may be used as debugging symbols.
 $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE): $(_MTB_RECIPE__PROG_FILE) $(_MTB_RECIPE__COPIED_PROJECT_PROG_FILE).d
-	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE_USER) $@
+	$(MTB__NOISE)cp -f $(_MTB_RECIPE__PROG_FILE) $@
 ifneq ($(COMBINE_SIGN_JSON),)
 	$(MTB__NOISE)cp -f $(_MTB_RECIPE__TARG_FILE) $(_MTB_RECIPE__PRJ_HEX_DIR)/$(_MTB_RECIPE__PROJECT_DIR_NAME).$(MTB_RECIPE__SUFFIX_TARGET)
 endif
@@ -243,6 +238,7 @@ else #($(COMBINE_SIGN_JSON),)
 _MTB_RECIPE__COMBINE_SIGN_INTERFACE_VERSION?=1
 _MTB_RECIPE__COMBINE_SIGN_VERSION:=$(lastword $(filter $(CY_TOOL_signcombinemkgen_SUPPORTED_INTERFACES),$(_MTB_RECIPE__COMBINE_SIGN_INTERFACE_VERSION)))
 
+ifneq ($(CY_TOOL_signcombinemkgen_EXE_ABS),)
 _MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSON=$(_MTB_RECIPE__APPLICATION_RELATIVE)/$(COMBINE_SIGN_JSON)
 _MTB_RECIPE__COMBINE_SIGN_MK_FILE:=$(_MTB_RECIPE__APP_HEX_DIR)/$(notdir $(COMBINE_SIGN_JSON)).mk
 
@@ -257,6 +253,8 @@ $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE): $(_MTB_RECIPE__NORMALIZED_COMBINE_SIGN_JSO
 recipe_prebuild: $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE)
 
 include $(_MTB_RECIPE__COMBINE_SIGN_MK_FILE)
+endif #($(CY_TOOL_signcombinemkgen_EXE_ABS),)
+
 # override the default app_combine.hex as the file being programmed.
 ifneq ($(MTB_COMBINE_SIGN_DEFAULT)$(MTB_COMBINE_SIGN_$(MTB_COMBINE_SIGN_DEFAULT)_HEX_PATH),)
 # Used the hex file from combiner-signer.json

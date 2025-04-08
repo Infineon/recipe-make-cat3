@@ -1,0 +1,25 @@
+        {
+            "name": "&&MTB_COMBINE_SIGN_&&IDX&&_CONFIG_NAME&& Launch (JLink)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "executable": "&&_MTB_RECIPE__ELF_FILE&&",
+            "servertype": "jlink",
+            "device": "&&DEVICE&&",
+            "interface": "&&_MTB_RECIPE__PROBE_INTERFACE&&",
+            "serialNumber": "&&_MTB_RECIPE__PROBE_SERIAL&&",
+            "preLaunchCommands": [
+                // Program via the hex file to get complete coverage
+                "exec-file &&MTB_COMBINE_SIGN_&&IDX&&_VSCODE_HEX_PATH&&"
+            ],
+            "overrideRestartCommands": [
+                "starti"
+            ],
+            // svdFile is optional, it can be very large.
+            "svdFile": "&&_MTB_RECIPE__SVD_FILE_NAME&&",
+            "breakAfterReset": true,
+            "runToEntryPoint": "main",    // Specifies application entry point name where program will halt
+            "preLaunchTask": "Build", // Set this to run a task from tasks.json before
+                                                     // starting a debug session
+            "showDevDebugOutput": "none" 
+        }

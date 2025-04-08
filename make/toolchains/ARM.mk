@@ -6,7 +6,8 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2024 Cypress Semiconductor Corporation
+# (c) 2018-2025, Cypress Semiconductor Corporation (an Infineon company)
+# or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +58,8 @@ endif
 # Build tools
 MTB_TOOLCHAIN_ARM__CC :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armclang
 MTB_TOOLCHAIN_ARM__CXX:=$(MTB_TOOLCHAIN_ARM__CC)
-MTB_TOOLCHAIN_ARM__AS :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armasm
+MTB_TOOLCHAIN_ARM__AS_LC :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armasm
+MTB_TOOLCHAIN_ARM__AS_UC :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armclang
 MTB_TOOLCHAIN_ARM__AR :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armar
 MTB_TOOLCHAIN_ARM__LD :=$(MTB_TOOLCHAIN_ARM__BASE_DIR)/bin/armlink
 
@@ -82,10 +84,7 @@ mtb_toolchain_ARM__elf2bin=$(MTB_TOOLCHAIN_ARM__ELF2BIN) --output $2 --bin $1
 # DEBUG/NDEBUG selection
 ifeq ($(CONFIG),Debug)
 _MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DDEBUG=DEBUG
-_MTB_TOOLCHAIN_ARM__OPTIMIZATION:=-O1
-ifneq (,$(filter -fomit-frame-pointer,$(CFLAGS) $(CXXFLAGS)))
-_MTB_TOOLCHAIN_ARM__OPTIMIZATION+=-fno-omit-frame-pointer
-endif
+_MTB_TOOLCHAIN_ARM__OPTIMIZATION:=-O1 -fno-omit-frame-pointer
 else
 ifeq ($(CONFIG),Release)
 _MTB_TOOLCHAIN_ARM__DEBUG_FLAG:=-DNDEBUG
@@ -150,9 +149,16 @@ MTB_TOOLCHAIN_ARM__CFLAGS:=\
 MTB_TOOLCHAIN_ARM__CXXFLAGS:=$(MTB_TOOLCHAIN_ARM__CFLAGS) -fno-rtti -fno-exceptions
 
 # Command line flags for s-files
-MTB_TOOLCHAIN_ARM__ASFLAGS:=\
+MTB_TOOLCHAIN_ARM__ASFLAGS_LC:=\
 	$(_MTB_TOOLCHAIN_ARM__FLAGS_CORE)\
 	$(_MTB_TOOLCHAIN_ARM__VFP_FLAGS)
+
+# Command line flags for S-files
+MTB_TOOLCHAIN_ARM__ASFLAGS_UC:=\
+	-c\
+	$(_MTB_TOOLCHAIN_ARM__CFLAGS_CORE)\
+	$(_MTB_TOOLCHAIN_ARM__VFP_CFLAGS)\
+	$(_MTB_TOOLCHAIN_ARM__COMMON_FLAGS)
 
 # Command line flags for linking
 MTB_TOOLCHAIN_ARM__LDFLAGS:=\
@@ -189,7 +195,8 @@ MTB_TOOLCHAIN_ARM__ARCHIVE_LIB_OUTPUT_OPTION:=
 MTB_TOOLCHAIN_ARM__MAPFILE:=--map --list 
 MTB_TOOLCHAIN_ARM__LSFLAGS:=--scatter 
 MTB_TOOLCHAIN_ARM__INCRSPFILE:=@
-MTB_TOOLCHAIN_ARM__INCRSPFILE_ASM:=--via 
+MTB_TOOLCHAIN_ARM__INCRSPFILE_ASM_UC:=@
+MTB_TOOLCHAIN_ARM__INCRSPFILE_ASM_LC:=--via 
 MTB_TOOLCHAIN_ARM__OBJRSPFILE:=--via 
 
 # Produce a makefile dependency rule for each input file

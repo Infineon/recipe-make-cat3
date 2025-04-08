@@ -7,7 +7,7 @@
 </mapAttribute>
 <stringAttribute key="org.eclipse.ui.externaltools.ATTR_LAUNCH_CONFIGURATION_BUILD_SCOPE" value="${none}"/>
 <stringAttribute key="org.eclipse.ui.externaltools.ATTR_LOCATION" value="${cy_tools_path:modus-shell}/bin/make${cy_exe_platform_ext}"/>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_TOOL_ARGUMENTS" value="-j&&_MTB_RECIPE__BUILD_NUM_PROCESSOR&& program PROG_FILE=&&MTB_COMBINE_SIGN_&&IDX&&_ECLIPSE_HEX_PATH&&"/>
+<stringAttribute key="org.eclipse.ui.externaltools.ATTR_TOOL_ARGUMENTS" value="-j&&_MTB_RECIPE__BUILD_NUM_PROCESSOR&& &&_MTB_RECIPE__PROG_TARGET&& PROG_FILE=&&MTB_COMBINE_SIGN_&&IDX&&_ECLIPSE_HEX_PATH&&"/>
 <stringAttribute key="org.eclipse.ui.externaltools.ATTR_WORKING_DIRECTORY" value="${cy_prj_path}"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/&&_MTB_RECIPE__PRJ_NAME&&"/>

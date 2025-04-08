@@ -7,7 +7,8 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2024 Cypress Semiconductor Corporation
+# (c) 2018-2025, Cypress Semiconductor Corporation (an Infineon company)
+# or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +48,11 @@ _MTB_RECIPE__GDB_SERVER_COMMAND:="$(MTB_CORE__JLINK_GDB_EXE)" $(_MTB_RECIPE__JLI
 _MTB_RECIPE__JLink_COMMANDER_ARGS:=-AutoConnect 1 -ExitOnError 1 -NoGui 1 $(_MTB_RECIPE__JLINK_PROBE_SERIAL) -Device $(DEVICE) -If $(_MTB_RECIPE__PROBE_INTERFACE) -Speed 4000
 _MTB_RECIPE__JLink_PROGRAM_COMMAND:="$(MTB_CORE__JLINK_EXE)" $(_MTB_RECIPE__JLink_COMMANDER_ARGS) -CommandFile $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/program.jlink
 _MTB_RECIPE__JLink_ERASE_COMMAND:="$(MTB_CORE__JLINK_EXE)" $(_MTB_RECIPE__JLink_COMMANDER_ARGS) -CommandFile $(MTB_TOOLS__OUTPUT_CONFIG_DIR)/erase.jlink
+
+_MTB_RECIPE__PROG_FILE_USER=$(_MTB_RECIPE__PROG_FILE)
+ifneq ($(PROG_FILE),)
+_MTB_RECIPE__PROG_FILE_USER=$(PROG_FILE)
+endif
 
 # Generate command files required by JLink tool for programming/erasing
 jlink_generate:

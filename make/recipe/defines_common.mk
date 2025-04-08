@@ -6,7 +6,7 @@
 #
 ################################################################################
 # \copyright
-# (c) 2018-2024, Cypress Semiconductor Corporation (an Infineon company) or
+# (c) 2018-2025, Cypress Semiconductor Corporation (an Infineon company) or
 # an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -45,3 +45,7 @@ endif
 _MTB_RECIPE__DEVICE_DIE:=$(DEVICE_$(DEVICE)_DIE)
 
 _MTB_RECIPE__DEVICE_FLASH_KB:=$(DEVICE_$(DEVICE)_FLASH_KB)
+
+ifeq ($(MTB_RECIPE__CORE),CM55)
+MTB_RECIPE__VFP_SELECT_DEFAULT=hardfp
+endif
